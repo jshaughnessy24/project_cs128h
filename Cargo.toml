@@ -1,0 +1,6 @@
+[package]
+name = "project_cs128h"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
