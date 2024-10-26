@@ -60,6 +60,7 @@ What we plan to have finished by each checkpoint:
 ## Possible Challenges
 - Using a MongoDB listener to read messages
 - Creating a sign-on system using MongoDB
+- Edge cases for adding/removing users to/from groups
 
 ## References
 - Discord
