@@ -1,5 +1,6 @@
+mod homepage;
 mod loginSignupCli;
 
-fn main()  {
-    loginSignupCli::loginSignupCli();
+fn main() {
+    homepage::homepage();
 }

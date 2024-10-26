@@ -1,7 +1,7 @@
 extern crate python_input;
 use python_input::input;
 
-pub fn loginSignupCli() {
+pub fn login_signup_cli() {
     // println!("Welcome to CLIChat!\n");
     // println!("[1] Login");
     // println!("[2] Sign Up");
@@ -18,9 +18,8 @@ pub fn loginSignupCli() {
     //     println!("{:?}", args);
     // }
 
+    let name = input("What is your name? ");
+    let age = input("How old are you? ");
 
-  let name = input("What is your name? ");
-  let age = input("How old are you? ");
-
-  println!("Hello {}, you are {} years old.", name, age);
+    println!("Hello {}, you are {} years old.", name, age);
 }
