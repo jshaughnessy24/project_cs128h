@@ -1,3 +1,5 @@
-fn main() {
-    println!("Hello, world!");
+mod loginSignupCli;
+
+fn main()  {
+    loginSignupCli::loginSignupCli();
 }
