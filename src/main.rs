@@ -1,5 +1,5 @@
-mod loginSignupCli;
+mod login_signup_cli;
 
 fn main()  {
-    loginSignupCli::loginSignupCli();
+    login_signup_cli::login_signup_cli();
 }
