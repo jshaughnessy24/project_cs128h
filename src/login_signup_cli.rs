@@ -11,7 +11,7 @@ pub fn login_signup_cli() {
         let input_value = input("> ");
         let mut email_input: String = String::new();
         let mut password_input: String = String::new();
-        if input_value.trim() == "1" {
+        if input_value.trim() == "1" || input_value.trim() == "2"   {
           loop {
             email_input = input("What is your email?: ");
             // validate email input
@@ -29,7 +29,22 @@ pub fn login_signup_cli() {
               break;
             }
           }
+        }
+        if input_value.trim() == "1" {
           match login_and_signup::login(
+            email_input, password_input
+          ) {
+            Ok(()) => {
+              println!("Welcome to CLIChat!");
+              break;
+            },
+            Err(e) => {
+              println!("{}", e);
+            }
+          }
+          break;
+        } else if input_value.trim() == "2" {
+          match login_and_signup::signup(
             email_input, password_input
           ) {
             Ok(()) => {
