@@ -114,9 +114,9 @@ mod test {
 
     #[tokio::test]
     async fn test_register_account() {
+        //remove account for test
         let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
 
-        // Get a handle on users collection
         let database = client.unwrap().database("cli_chat");
         let user_coll: Collection<Document> = database.collection("users");
         let filter = doc! { "username": "test0" }; 
@@ -124,6 +124,7 @@ mod test {
         let result = user_coll.delete_one(filter).await;
         assert_eq!(result.unwrap().deleted_count, 1);
 
+        //register account
         let register_account_result = register_account("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test0".to_string(), "test_pwd0".to_string()).await;
         assert_eq!(register_account_result.unwrap(), true);
     }
