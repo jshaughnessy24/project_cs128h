@@ -1,3 +1,5 @@
+mod authentication;
+mod friends;
 mod login_signup_cli;
 
 #[tokio::main]
