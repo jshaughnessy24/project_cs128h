@@ -1,6 +1,10 @@
-mod homepage;
+mod authentication;
+mod friends;
 mod login_signup_cli;
 
-fn main() {
-    homepage::homepage();
+#[tokio::main]
+async fn main() -> mongodb::error::Result<()> {
+    // login_signup_cli::login_signup_cli();
+    friends::friends();
+    Ok(())
 }
