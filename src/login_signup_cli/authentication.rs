@@ -78,7 +78,7 @@ pub async fn register_account(uri: String, username: String, password: String) -
     }
     // Get database and register account
     let database = client.unwrap().database("cli_chat");
-    register_account_w_db(database, username, password).await
+    return register_account_w_db(database, username, password).await
 }
 
 /// Registers users
@@ -95,10 +95,12 @@ async fn register_account_w_db(database: mongodb::Database, username: String, pa
         return Err(user.unwrap_err().to_string());
     }
     if ((&user).as_ref().unwrap()).is_some() {
+        println!("User found.");
         return Ok(false);
     }
 
     // Create and insert user document
+    println!("Make new user.");
     let doc: Document = doc! { "username": username, "password": hash(password, DEFAULT_COST).unwrap()};
     let insert_one_result = user_coll.insert_one(doc).await;
     if insert_one_result.is_err() {
