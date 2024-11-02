@@ -1,5 +1,9 @@
+
+mod authentication;
 mod login_signup_cli;
 
-fn main()  {
+#[tokio::main]
+async fn main() -> mongodb::error::Result<()> {
     login_signup_cli::login_signup_cli();
+    Ok(())
 }
