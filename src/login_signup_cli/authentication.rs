@@ -95,7 +95,6 @@ async fn register_account_w_db(database: mongodb::Database, username: String, pa
         return Err(user.unwrap_err().to_string());
     }
     if ((&user).as_ref().unwrap()).is_some() {
-        println!("User found.");
         return Ok(false);
     }
 
