@@ -115,7 +115,7 @@ async fn register_account_w_db(
 
     // Create and insert user document
     let doc: Document =
-        doc! { "username": username, "password": hash(password, DEFAULT_COST).unwrap()};
+        doc! { "username": username, "password": hash(password, DEFAULT_COST).unwrap(), "friends": [], "group_chats": []};
     let insert_one_result = user_coll.insert_one(doc).await;
     if insert_one_result.is_err() {
         return Err(insert_one_result.unwrap_err().to_string());
