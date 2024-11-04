@@ -1,7 +1,6 @@
-use mongodb::{ 
-	bson::{Document, doc},
-	Client,
-	Collection 
+use mongodb::{
+    bson::{doc, Document},
+    Client, Collection,
 };
 
 //found out how to use these imports from https://hashing.ssojet.com/bcrypt-in-rust/
@@ -12,16 +11,20 @@ use bcrypt::{hash, DEFAULT_COST};
 pub enum SignInOutcome {
     Success,
     UsernameNotFound,
-    IncorrectPassword
+    IncorrectPassword,
 }
 
 /// Signs in users
-/// Returns Ok(SignInOutcome) if username successfully queried in database. 
-///     Success if username and correct password, 
-///     IncorrectPassword if username and incorrect password, 
+/// Returns Ok(SignInOutcome) if username successfully queried in database.
+///     Success if username and correct password,
+///     IncorrectPassword if username and incorrect password,
 ///     UsernameNotFound if username not found.
 /// Returns Err(String) if mongodb or bcrypt error occurs
-pub async fn sign_in(uri: String, username: String, password: String) -> Result<SignInOutcome, String> {
+pub async fn sign_in(
+    uri: String,
+    username: String,
+    password: String,
+) -> Result<SignInOutcome, String> {
     // Create a new client and connect to the server
     let client = Client::with_uri_str(uri).await;
     if client.is_err() {
@@ -33,12 +36,16 @@ pub async fn sign_in(uri: String, username: String, password: String) -> Result<
 }
 
 /// Signs in users
-/// Returns Ok(SignInOutcome) if username successfully queried in database. 
-///     Success if username and correct password, 
-///     IncorrectPassword if username and incorrect password, 
+/// Returns Ok(SignInOutcome) if username successfully queried in database.
+///     Success if username and correct password,
+///     IncorrectPassword if username and incorrect password,
 ///     UsernameNotFound if username not found.
 /// Returns Err(String) if mongodb or bcrypt error occurs
-async fn sign_in_w_db(database: mongodb::Database, username: String, password: String) -> Result<SignInOutcome, String> {
+async fn sign_in_w_db(
+    database: mongodb::Database,
+    username: String,
+    password: String,
+) -> Result<SignInOutcome, String> {
     let user_coll: Collection<Document> = database.collection("users");
 
     // Find a user based on username
@@ -55,7 +62,7 @@ async fn sign_in_w_db(database: mongodb::Database, username: String, password: S
     // Verify correct password
     let hashed_password: &str = unwrapped_user.get("password").unwrap().as_str().unwrap();
     let is_correct_password = verify(password, hashed_password);
-    
+
     if is_correct_password.is_err() {
         Err(is_correct_password.unwrap_err().to_string())
     } else if is_correct_password.unwrap() {
@@ -66,11 +73,15 @@ async fn sign_in_w_db(database: mongodb::Database, username: String, password: S
 }
 
 /// Registers users
-/// Returns Ok(bool) if username successfully queried in database. 
-///     true if username does not initially exist and has been added, 
-///     false if username does exist, 
+/// Returns Ok(bool) if username successfully queried in database.
+///     true if username does not initially exist and has been added,
+///     false if username does exist,
 /// Returns Err(String) if mongodb or bcrypt error occurs
-pub async fn register_account(uri: String, username: String, password: String) -> Result<bool, String> {
+pub async fn register_account(
+    uri: String,
+    username: String,
+    password: String,
+) -> Result<bool, String> {
     // Create a new client and connect to the server
     let client = Client::with_uri_str(uri).await;
     if client.is_err() {
@@ -78,15 +89,19 @@ pub async fn register_account(uri: String, username: String, password: String) -
     }
     // Get database and register account
     let database = client.unwrap().database("cli_chat");
-    return register_account_w_db(database, username, password).await
+    register_account_w_db(database, username, password).await
 }
 
 /// Registers users
-/// Returns Ok(bool) if username successfully queried in database. 
-///     true if username does not initially exist and has been added, 
-///     false if username does exist, 
+/// Returns Ok(bool) if username successfully queried in database.
+///     true if username does not initially exist and has been added,
+///     false if username does exist,
 /// Returns Err(String) if mongodb or bcrypt error occurs
-async fn register_account_w_db(database: mongodb::Database, username: String, password: String) -> Result<bool, String> {
+async fn register_account_w_db(
+    database: mongodb::Database,
+    username: String,
+    password: String,
+) -> Result<bool, String> {
     let user_coll: Collection<Document> = database.collection("users");
 
     // Find a user based on username
@@ -99,8 +114,8 @@ async fn register_account_w_db(database: mongodb::Database, username: String, pa
     }
 
     // Create and insert user document
-    println!("Make new user.");
-    let doc: Document = doc! { "username": username, "password": hash(password, DEFAULT_COST).unwrap()};
+    let doc: Document =
+        doc! { "username": username, "password": hash(password, DEFAULT_COST).unwrap(), "friends": [], "group_chats": []};
     let insert_one_result = user_coll.insert_one(doc).await;
     if insert_one_result.is_err() {
         return Err(insert_one_result.unwrap_err().to_string());
@@ -120,7 +135,7 @@ mod test {
 
         let database = client.unwrap().database("cli_chat");
         let user_coll: Collection<Document> = database.collection("users");
-        let filter = doc! { "username": "test0" }; 
+        let filter = doc! { "username": "test0" };
 
         let result = user_coll.delete_one(filter).await;
         assert_eq!(result.unwrap().deleted_count, 1);
