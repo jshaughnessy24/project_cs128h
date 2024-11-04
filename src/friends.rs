@@ -24,6 +24,7 @@ pub fn friends() {
         println!("[remove-friend] [ID] Remove a friend");
         println!("[direct-message] [ID] DM friend\n");
 
+        println!("\n\n\n");
         // Get the user input
         let choice = input("What would you like to do? ");
 

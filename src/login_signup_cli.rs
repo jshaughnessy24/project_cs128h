@@ -6,11 +6,12 @@ mod login_and_signup;
 mod authentication;
 
 
-pub async fn login_signup_cli() {
+pub async fn login_signup_cli() -> Option<String> {
   let MONGODB_URI = "mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string();
-  println!("Welcome to CLIChat!\n");
+  println!("\x1b[1mWelcome to CLIChat!\x1b[0m\n");
   println!("[1] Login");
   println!("[2] Sign Up");
+  println!("\n\n\n\n\n\n\n\n\n\n");
   loop {
       // Get input from the user
       let input_value = input("> ");
@@ -38,10 +39,11 @@ pub async fn login_signup_cli() {
           }
           if input_value.trim() == "1" {
             match authentication::sign_in(
-              MONGODB_URI.clone(), email_input, password_input
+              MONGODB_URI.clone(), email_input.clone(), password_input
             ).await {
               Ok(authentication::SignInOutcome::Success) => {
                 println!("Welcome to CLIChat!");
+                return Some(email_input.clone());
                 break_full = true;
                 break;
               },
@@ -57,11 +59,13 @@ pub async fn login_signup_cli() {
             }
           } else if input_value.trim() == "2" {
             match authentication::register_account(
-              MONGODB_URI.clone(), email_input, password_input
+              MONGODB_URI.clone(), email_input.clone(), password_input
             ).await {
               Ok(success) => {
                 if success {
                   println!("Welcome to CLIChat!");
+                  return Some(email_input.clone());
+                  break_full = true;
                   break;
                 } else {
                   println!("User already exists. Please use another email address.");
@@ -80,4 +84,5 @@ pub async fn login_signup_cli() {
         break;
       }
   }
+  return None;
 }
