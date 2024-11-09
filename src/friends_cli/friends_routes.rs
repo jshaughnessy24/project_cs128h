@@ -6,9 +6,9 @@ use mongodb::{
 #[derive(Debug, PartialEq)]
 pub enum AddFriendOutcome {
     Success,
-    CurrentUsernameNotFound,
-    OtherUsernameNotFound,
-    AlreadyFriends
+    CurrentEmailNotFound,
+    OtherEmailNotFound,
+    AlreadyFriends,
 }
 
 /// Adds friends to inputted usernames
@@ -28,8 +28,8 @@ pub async fn add_friend_w_db(
     // Find current user based on username
     let current_user_doc = match get_user_doc(&user_coll, &current_username).await {
         Ok(current_user_doc) => current_user_doc,
-        Err(Ok(())) => return Ok(AddFriendOutcome::CurrentUsernameNotFound),
-        Err(Err(err_str)) => return Err(err_str)
+        Err(Ok(())) => return Ok(AddFriendOutcome::OtherEmailNotFound),
+        Err(Err(err_str)) => return Err(err_str),
     };
 
     // Get current user friends list
@@ -38,13 +38,13 @@ pub async fn add_friend_w_db(
     // Check if already friends
     if current_friends_vec.contains(&other_username) {
         return Ok(AddFriendOutcome::AlreadyFriends);
-    } 
+    }
 
     // // Find other user based on username
     let other_user_doc = match get_user_doc(&user_coll, &other_username).await {
         Ok(other_user_doc) => other_user_doc,
-        Err(Ok(())) => return Ok(AddFriendOutcome::OtherUsernameNotFound),
-        Err(Err(err_str)) => return Err(err_str)
+        Err(Ok(())) => return Ok(AddFriendOutcome::OtherEmailNotFound),
+        Err(Err(err_str)) => return Err(err_str),
     };
 
     // Get other user friends list
@@ -60,22 +60,24 @@ pub async fn add_friend_w_db(
     };
 
     match user_coll
-    .update_one(doc! { "username": current_username}, current_update_doc)
-    .await {
+        .update_one(doc! { "username": current_username}, current_update_doc)
+        .await
+    {
         Ok(_) => (),
-        Err(error) => return Err(error.to_string())
+        Err(error) => return Err(error.to_string()),
     }
-    
+
     // Update other friend list on mongodb
     let other_update_doc = doc! {
         "$set": doc! { "friends": other_friends_vec.as_slice()},
     };
 
     match user_coll
-    .update_one(doc! { "username": other_username}, other_update_doc)
-    .await {
+        .update_one(doc! { "username": other_username}, other_update_doc)
+        .await
+    {
         Ok(_) => (),
-        Err(error) => return Err(error.to_string())
+        Err(error) => return Err(error.to_string()),
     }
 
     Ok(AddFriendOutcome::Success)
@@ -85,14 +87,17 @@ pub async fn add_friend_w_db(
 /// Returns Ok(Some(Vec<String>)) if friends list obtained
 /// Returns Ok(None) if user does not exist
 /// Returns Error(String) if mongodb error occurs
-pub async fn get_friend_list(database: mongodb::Database, username: String) -> Result<Option<Vec<String>>, String> {
+pub async fn get_friend_list(
+    database: mongodb::Database,
+    username: String,
+) -> Result<Option<Vec<String>>, String> {
     let user_coll: Collection<Document> = database.collection("users");
 
     // Find current user based on username
     let user_doc = match get_user_doc(&user_coll, &username).await {
         Ok(current_user_doc) => current_user_doc,
         Err(Ok(())) => return Ok(None),
-        Err(Err(err_str)) => return Err(err_str)
+        Err(Err(err_str)) => return Err(err_str),
     };
 
     Ok(Some(get_friend_vec_from_doc(&user_doc)))
@@ -103,7 +108,10 @@ pub async fn get_friend_list(database: mongodb::Database, username: String) -> R
 /// Returns Err(Result<(), String>)
 ///     Ok() if username not found in database
 ///     Err(String) if mongodb error occurs
-async fn get_user_doc(user_coll: &Collection<Document>, username: &String) -> Result<Document, Result<(), String>> {
+async fn get_user_doc(
+    user_coll: &Collection<Document>,
+    username: &String,
+) -> Result<Document, Result<(), String>> {
     let user = user_coll.find_one(doc! {"username": &username}).await;
     if user.is_err() {
         return Err(Err(user.unwrap_err().to_string()));
@@ -119,7 +127,10 @@ async fn get_user_doc(user_coll: &Collection<Document>, username: &String) -> Re
 /// Returns Vec<String> the friend vector
 fn get_friend_vec_from_doc(user_doc: &Document) -> Vec<String> {
     let current_friends_bson_vec: &Vec<Bson> = user_doc.get("friends").unwrap().as_array().unwrap();
-    let current_friends_vec: Vec<String> = current_friends_bson_vec.iter().map(|x| x.as_str().unwrap().to_string()).collect();
+    let current_friends_vec: Vec<String> = current_friends_bson_vec
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
     current_friends_vec
 }
 
@@ -134,9 +145,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //add friend
-        let add_friend_outcome = add_friend_w_db(database, "".to_string(), "test2".to_string()).await;
+        let add_friend_outcome =
+            add_friend_w_db(database, "".to_string(), "test2".to_string()).await;
 
-        assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::CurrentUsernameNotFound);
+        assert_eq!(
+            add_friend_outcome.unwrap(),
+            AddFriendOutcome::OtherEmailNotFound
+        );
     }
 
     #[tokio::test]
@@ -146,9 +161,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //add friend
-        let add_friend_outcome = add_friend_w_db(database, "test2".to_string(), "".to_string()).await;
+        let add_friend_outcome =
+            add_friend_w_db(database, "test2".to_string(), "".to_string()).await;
 
-        assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::OtherUsernameNotFound);
+        assert_eq!(
+            add_friend_outcome.unwrap(),
+            AddFriendOutcome::OtherEmailNotFound
+        );
     }
 
     #[tokio::test]
@@ -157,9 +176,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //add friend
-        let add_friend_outcome = add_friend_w_db(database, "test2".to_string(), "test3".to_string()).await;
+        let add_friend_outcome =
+            add_friend_w_db(database, "test2".to_string(), "test3".to_string()).await;
 
-        assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::AlreadyFriends);
+        assert_eq!(
+            add_friend_outcome.unwrap(),
+            AddFriendOutcome::AlreadyFriends
+        );
     }
 
     #[tokio::test]
@@ -174,7 +197,9 @@ mod test {
             "$set": doc! { "friends": ["test2".to_string()]},
         };
 
-        let update_test4_res = user_coll.update_one(doc! { "username": "test4".to_string()}, test4_update_doc).await;
+        let update_test4_res = user_coll
+            .update_one(doc! { "username": "test4".to_string()}, test4_update_doc)
+            .await;
         assert!(update_test4_res.is_ok());
 
         // Reset test5 friend list on mongodb
@@ -182,11 +207,14 @@ mod test {
             "$set": doc! { "friends": []},
         };
 
-        let update_test5_res = user_coll.update_one(doc! { "username": "test5".to_string()}, test5_update_doc).await;
+        let update_test5_res = user_coll
+            .update_one(doc! { "username": "test5".to_string()}, test5_update_doc)
+            .await;
         assert!(update_test5_res.is_ok());
 
         // add friend
-        let add_friend_outcome = add_friend_w_db(database, "test4".to_string(), "test5".to_string()).await;
+        let add_friend_outcome =
+            add_friend_w_db(database, "test4".to_string(), "test5".to_string()).await;
         assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::Success);
     }
 
@@ -215,6 +243,9 @@ mod test {
         let mut expected_friend_list: Vec<String> = Vec::new();
         expected_friend_list.push("test3".to_string());
         expected_friend_list.push("test4".to_string());
-        assert_eq!(get_friend_list_outcome.unwrap().unwrap(), expected_friend_list);
+        assert_eq!(
+            get_friend_list_outcome.unwrap().unwrap(),
+            expected_friend_list
+        );
     }
 }
