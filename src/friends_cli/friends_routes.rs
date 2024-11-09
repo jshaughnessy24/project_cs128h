@@ -6,8 +6,8 @@ use mongodb::{
 #[derive(Debug, PartialEq)]
 pub enum AddFriendOutcome {
     Success,
-    CurrentUsernameNotFound,
-    OtherUsernameNotFound,
+    CurrentEmailNotFound,
+    OtherEmailNotFound,
     AlreadyFriends,
 }
 
@@ -28,7 +28,7 @@ pub async fn add_friend_w_db(
     // Find current user based on username
     let current_user_doc = match get_user_doc(&user_coll, &current_username).await {
         Ok(current_user_doc) => current_user_doc,
-        Err(Ok(())) => return Ok(AddFriendOutcome::CurrentUsernameNotFound),
+        Err(Ok(())) => return Ok(AddFriendOutcome::OtherEmailNotFound),
         Err(Err(err_str)) => return Err(err_str),
     };
 
@@ -43,7 +43,7 @@ pub async fn add_friend_w_db(
     // // Find other user based on username
     let other_user_doc = match get_user_doc(&user_coll, &other_username).await {
         Ok(other_user_doc) => other_user_doc,
-        Err(Ok(())) => return Ok(AddFriendOutcome::OtherUsernameNotFound),
+        Err(Ok(())) => return Ok(AddFriendOutcome::OtherEmailNotFound),
         Err(Err(err_str)) => return Err(err_str),
     };
 
@@ -150,7 +150,7 @@ mod test {
 
         assert_eq!(
             add_friend_outcome.unwrap(),
-            AddFriendOutcome::CurrentUsernameNotFound
+            AddFriendOutcome::OtherEmailNotFound
         );
     }
 
@@ -166,7 +166,7 @@ mod test {
 
         assert_eq!(
             add_friend_outcome.unwrap(),
-            AddFriendOutcome::OtherUsernameNotFound
+            AddFriendOutcome::OtherEmailNotFound
         );
     }
 

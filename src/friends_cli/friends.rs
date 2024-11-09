@@ -5,15 +5,15 @@ use mongodb::{Client, Database};
 
 use crate::friends_cli::friends_routes::{add_friend_w_db, get_friend_list, AddFriendOutcome};
 
-pub async fn friends(database: Database, current_username: String) {
+pub async fn friends(database: Database, current_email: String) {
     let mut friend_list: Vec<String> = Vec::new();
 
     loop {
         println!("\x1b[1mFriends List\x1b[0m\n");
 
-        let username = current_username.to_string();
+        let email = current_email.to_string();
 
-        match get_friend_list(database.clone(), username.clone()).await {
+        match get_friend_list(database.clone(), email.clone()).await {
             Ok(Some(friends)) => {
                 if friends.is_empty() {
                     println!("You have no friends added.");
@@ -25,7 +25,7 @@ pub async fn friends(database: Database, current_username: String) {
                 friend_list = friends;
             }
             Ok(None) => {
-                println!("User '{}' not found.", username);
+                println!("User '{}' not found.", email);
             }
             Err(err) => {
                 println!("Error retrieving friend list: {}", err);
@@ -34,9 +34,9 @@ pub async fn friends(database: Database, current_username: String) {
 
         println!("\nOptions:");
         println!("[back] Back to Homepage");
-        println!("[add-friend] [name] Add a friend");
-        println!("[remove-friend] [name] Remove a friend");
-        println!("[direct-message] [name] DM friend\n");
+        println!("[add-friend] [email] Add a friend");
+        println!("[remove-friend] [email] Remove a friend");
+        println!("[direct-message] [email] DM friend\n");
 
         let choice = input("What would you like to do? ");
 
@@ -46,44 +46,37 @@ pub async fn friends(database: Database, current_username: String) {
                 println!("Returning to Homepage...");
                 break;
             }
-            ["add-friend", friend_username] => {
-                match add_friend_w_db(
-                    database.clone(),
-                    username.clone(),
-                    friend_username.to_string(),
-                )
-                .await
+            ["add-friend", friend_email] => {
+                match add_friend_w_db(database.clone(), email.clone(), friend_email.to_string())
+                    .await
                 {
                     Ok(AddFriendOutcome::Success) => {
-                        println!("Friend '{}' added!", friend_username);
+                        println!("Friend '{}' added!", friend_email);
                     }
-                    Ok(AddFriendOutcome::CurrentUsernameNotFound) => {
-                        println!("Your username was not found.");
+                    Ok(AddFriendOutcome::CurrentEmailNotFound) => {
+                        println!("Your email was not found.");
                     }
-                    Ok(AddFriendOutcome::OtherUsernameNotFound) => {
-                        println!("Friend '{}' not found.", friend_username);
+                    Ok(AddFriendOutcome::OtherEmailNotFound) => {
+                        println!("Friend '{}' not found.", friend_email);
                     }
                     Ok(AddFriendOutcome::AlreadyFriends) => {
-                        println!("You are already friends with '{}'.", friend_username);
+                        println!("You are already friends with '{}'.", friend_email);
                     }
                     Err(err) => {
                         println!("Failed to add friend: {}", err);
                     }
                 }
             }
-            ["remove-friend", friend_username] => {
+            ["remove-friend", friend_email] => {
                 // TODO
                 println!("need to implement");
             }
-            ["direct-message", friend_username] => {
-                if friend_list.contains(&friend_username.to_string()) {
-                    println!("Direct messaging {}...", friend_username);
+            ["direct-message", friend_email] => {
+                if friend_list.contains(&friend_email.to_string()) {
+                    println!("Direct messaging {}...", friend_email);
                     // TODO
                 } else {
-                    println!(
-                        "Friend '{}' not found in your friend list.",
-                        friend_username
-                    );
+                    println!("Friend '{}' not found in your friend list.", friend_email);
                 }
             }
             _ => {
