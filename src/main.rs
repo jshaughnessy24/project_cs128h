@@ -12,9 +12,18 @@ async fn main() -> mongodb::error::Result<()> {
     let database = client.unwrap().database("cli_chat");
 
     print!("{}[2J", 27 as char);
-    let email_input = login_signup_cli::login_signup_cli().await;
+    let current_user_email = login_signup_cli::login_signup_cli().await;
     print!("{}[2J", 27 as char);
 
-    friends(database, email_input.unwrap()).await; // Call the friends function correctly
+    // friends(database, email_input.unwrap()).await; // Call the friends function correctly
+    match current_user_email {
+        Some(user_email) => {
+            message_cli::message_cli(user_email.to_string(), "test@test.com".to_string()).await;
+        },
+        _ => {
+            println!("No signed in user!");
+        }
+    }
+
     Ok(())
 }
