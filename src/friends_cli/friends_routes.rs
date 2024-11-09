@@ -38,7 +38,7 @@ pub async fn add_friend_w_db(
     // Check if already friends
     if current_friends_vec.contains(&other_email) {
         return Ok(AddFriendOutcome::AlreadyFriends);
-    } 
+    }
 
     // // Find other user based on email
     let other_user_doc = match get_user_doc(&user_coll, &other_email).await {
@@ -63,9 +63,9 @@ pub async fn add_friend_w_db(
     .update_one(doc! { "email": current_email}, current_update_doc)
     .await {
         Ok(_) => (),
-        Err(error) => return Err(error.to_string())
+        Err(error) => return Err(error.to_string()),
     }
-    
+
     // Update other friend list on mongodb
     let other_update_doc = doc! {
         "$set": doc! { "friends": other_friends_vec.as_slice()},
@@ -75,7 +75,7 @@ pub async fn add_friend_w_db(
     .update_one(doc! { "email": other_email}, other_update_doc)
     .await {
         Ok(_) => (),
-        Err(error) => return Err(error.to_string())
+        Err(error) => return Err(error.to_string()),
     }
 
     Ok(AddFriendOutcome::Success)
@@ -92,7 +92,7 @@ pub async fn get_friend_list(database: mongodb::Database, email: String) -> Resu
     let user_doc = match get_user_doc(&user_coll, &email).await {
         Ok(current_user_doc) => current_user_doc,
         Err(Ok(())) => return Ok(None),
-        Err(Err(err_str)) => return Err(err_str)
+        Err(Err(err_str)) => return Err(err_str),
     };
 
     Ok(Some(get_friend_vec_from_doc(&user_doc)))
@@ -119,7 +119,10 @@ async fn get_user_doc(user_coll: &Collection<Document>, email: &String) -> Resul
 /// Returns Vec<String> the friend vector
 fn get_friend_vec_from_doc(user_doc: &Document) -> Vec<String> {
     let current_friends_bson_vec: &Vec<Bson> = user_doc.get("friends").unwrap().as_array().unwrap();
-    let current_friends_vec: Vec<String> = current_friends_bson_vec.iter().map(|x| x.as_str().unwrap().to_string()).collect();
+    let current_friends_vec: Vec<String> = current_friends_bson_vec
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
     current_friends_vec
 }
 
@@ -159,7 +162,10 @@ mod test {
         //add friend
         let add_friend_outcome = add_friend_w_db(database, "test2@test.com".to_string(), "test3@test.com".to_string()).await;
 
-        assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::AlreadyFriends);
+        assert_eq!(
+            add_friend_outcome.unwrap(),
+            AddFriendOutcome::AlreadyFriends
+        );
     }
 
     #[tokio::test]
