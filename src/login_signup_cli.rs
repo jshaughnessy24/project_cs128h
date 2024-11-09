@@ -47,8 +47,8 @@ pub async fn login_signup_cli() -> Option<String> {
                 break_full = true;
                 break;
               },
-              Ok(authentication::SignInOutcome::UsernameNotFound) => {
-                println!("Username not found, please try again.");
+              Ok(authentication::SignInOutcome::EmailNotFound) => {
+                println!("Email not found, please try again.");
               },
               Ok(authentication::SignInOutcome::IncorrectPassword) => {
                 println!("Incorrect password, please try again.");

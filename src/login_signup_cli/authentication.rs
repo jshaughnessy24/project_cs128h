@@ -10,19 +10,19 @@ use bcrypt::{hash, DEFAULT_COST};
 #[derive(Debug, PartialEq)]
 pub enum SignInOutcome {
     Success,
-    UsernameNotFound,
+    EmailNotFound,
     IncorrectPassword,
 }
 
 /// Signs in users
-/// Returns Ok(SignInOutcome) if username successfully queried in database.
-///     Success if username and correct password,
-///     IncorrectPassword if username and incorrect password,
-///     UsernameNotFound if username not found.
+/// Returns Ok(SignInOutcome) if email successfully queried in database.
+///     Success if email and correct password,
+///     IncorrectPassword if email and incorrect password,
+///     EmailNotFound if email not found.
 /// Returns Err(String) if mongodb or bcrypt error occurs
 pub async fn sign_in(
     uri: String,
-    username: String,
+    email: String,
     password: String,
 ) -> Result<SignInOutcome, String> {
     // Create a new client and connect to the server
@@ -32,29 +32,29 @@ pub async fn sign_in(
     }
     // Get a database and sign in
     let database = client.unwrap().database("cli_chat");
-    sign_in_w_db(database, username, password).await
+    sign_in_w_db(database, email, password).await
 }
 
 /// Signs in users
-/// Returns Ok(SignInOutcome) if username successfully queried in database.
-///     Success if username and correct password,
-///     IncorrectPassword if username and incorrect password,
-///     UsernameNotFound if username not found.
+/// Returns Ok(SignInOutcome) if email successfully queried in database.
+///     Success if email and correct password,
+///     IncorrectPassword if email and incorrect password,
+///     EmailNotFound if email not found.
 /// Returns Err(String) if mongodb or bcrypt error occurs
 async fn sign_in_w_db(
     database: mongodb::Database,
-    username: String,
+    email: String,
     password: String,
 ) -> Result<SignInOutcome, String> {
     let user_coll: Collection<Document> = database.collection("users");
 
-    // Find a user based on username
-    let user = user_coll.find_one(doc! {"username": &username}).await;
+    // Find a user based on email
+    let user = user_coll.find_one(doc! {"email": &email}).await;
     if user.is_err() {
         return Err(user.unwrap_err().to_string());
     }
     if ((&user).as_ref().unwrap()).is_none() {
-        return Ok(SignInOutcome::UsernameNotFound);
+        return Ok(SignInOutcome::EmailNotFound);
     }
 
     let unwrapped_user = user.unwrap().unwrap();
@@ -73,13 +73,13 @@ async fn sign_in_w_db(
 }
 
 /// Registers users
-/// Returns Ok(bool) if username successfully queried in database.
-///     true if username does not initially exist and has been added,
-///     false if username does exist,
+/// Returns Ok(bool) if email successfully queried in database.
+///     true if email does not initially exist and has been added,
+///     false if email does exist,
 /// Returns Err(String) if mongodb or bcrypt error occurs
 pub async fn register_account(
     uri: String,
-    username: String,
+    email: String,
     password: String,
 ) -> Result<bool, String> {
     // Create a new client and connect to the server
@@ -89,23 +89,23 @@ pub async fn register_account(
     }
     // Get database and register account
     let database = client.unwrap().database("cli_chat");
-    register_account_w_db(database, username, password).await
+    register_account_w_db(database, email, password).await
 }
 
 /// Registers users
-/// Returns Ok(bool) if username successfully queried in database.
-///     true if username does not initially exist and has been added,
-///     false if username does exist,
+/// Returns Ok(bool) if email successfully queried in database.
+///     true if email does not initially exist and has been added,
+///     false if email does exist,
 /// Returns Err(String) if mongodb or bcrypt error occurs
 async fn register_account_w_db(
     database: mongodb::Database,
-    username: String,
+    email: String,
     password: String,
 ) -> Result<bool, String> {
     let user_coll: Collection<Document> = database.collection("users");
 
-    // Find a user based on username
-    let user = user_coll.find_one(doc! {"username": &username}).await;
+    // Find a user based on email
+    let user = user_coll.find_one(doc! {"email": &email}).await;
     if user.is_err() {
         return Err(user.unwrap_err().to_string());
     }
@@ -115,7 +115,7 @@ async fn register_account_w_db(
 
     // Create and insert user document
     let doc: Document =
-        doc! { "username": username, "password": hash(password, DEFAULT_COST).unwrap(), "friends": [], "group_chats": []};
+        doc! { "email": email, "password": hash(password, DEFAULT_COST).unwrap(), "friends": [], "group_chats": []};
     let insert_one_result = user_coll.insert_one(doc).await;
     if insert_one_result.is_err() {
         return Err(insert_one_result.unwrap_err().to_string());
@@ -135,23 +135,23 @@ mod test {
 
         let database = client.unwrap().database("cli_chat");
         let user_coll: Collection<Document> = database.collection("users");
-        let filter = doc! { "username": "test0" };
+        let filter = doc! { "email": "test0@test.com" };
 
         let result = user_coll.delete_one(filter).await;
         assert_eq!(result.unwrap().deleted_count, 1);
 
         //register account
-        let register_account_result = register_account("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test0".to_string(), "test_pwd0".to_string()).await;
+        let register_account_result = register_account("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test0@test.com".to_string(), "test_pwd0".to_string()).await;
         assert_eq!(register_account_result.unwrap(), true);
     }
     #[tokio::test]
     async fn test_sign_in_correct_password() {
-        let sign_in_result = sign_in("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test1".to_string(), "test_pwd1".to_string()).await;
+        let sign_in_result = sign_in("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test1@test.com".to_string(), "test_pwd1".to_string()).await;
         assert_eq!(sign_in_result.unwrap(), SignInOutcome::Success);
     }
     #[tokio::test]
     async fn test_sign_in_incorrect_password() {
-        let sign_in_result = sign_in("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test1".to_string(), "incorrect".to_string()).await;
+        let sign_in_result = sign_in("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0".to_string(), "test1@test.com".to_string(), "incorrect".to_string()).await;
         assert_eq!(sign_in_result.unwrap(), SignInOutcome::IncorrectPassword);
     }
 }
