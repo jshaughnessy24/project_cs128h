@@ -82,6 +82,8 @@ pub async fn message_cli(
             if (start < messages.len() - 3) { // prevent from going below the bottom
                 start = start + 1;
             }
+        } else if message_input == "back".to_string() {
+            break;
         } else {
             messages.push(Message {
                 sender: current_user_email.to_string(),

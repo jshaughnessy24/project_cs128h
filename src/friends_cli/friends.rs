@@ -1,17 +1,18 @@
 extern crate python_input;
 use python_input::input;
+mod message_cli;
 
 use mongodb::{Client, Database};
 
 use crate::friends_cli::friends_routes::{add_friend_w_db, get_friend_list, AddFriendOutcome};
 
-pub async fn friends(database: Database, current_email: String) {
+pub async fn friends(database: Database, user_email: String) {
     let mut friend_list: Vec<String> = Vec::new();
 
     loop {
         println!("\x1b[1mFriends List\x1b[0m\n");
 
-        let email = current_email.to_string();
+        let email = user_email.to_string();
 
         match get_friend_list(database.clone(), email.clone()).await {
             Ok(Some(friends)) => {
@@ -73,7 +74,8 @@ pub async fn friends(database: Database, current_email: String) {
             }
             ["direct-message", friend_email] => {
                 if friend_list.contains(&friend_email.to_string()) {
-                    println!("Direct messaging {}...", friend_email);
+                    // println!("Direct messaging {}...", friend_email);
+                    message_cli::message_cli(user_email.to_string(), friend_email.to_string()).await;
                     // TODO
                 } else {
                     println!("Friend '{}' not found in your friend list.", friend_email);
