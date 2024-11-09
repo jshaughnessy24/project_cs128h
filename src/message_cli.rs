@@ -11,6 +11,7 @@ struct Message {
 }
 
 pub async fn message_cli(
+    current_user_email: String,
     recipient_email: String
 ) {
     // TODO: Retrieve messages
@@ -71,11 +72,22 @@ pub async fn message_cli(
             println!("[{}, {}]", messages[i].sender, messages[i].date_string);
             println!("{}\n", messages[i].content);
         }
-        // TODO: 
-        let option = input("What would you like to do? ");
-        if option == "up".to_string() {
-            start = start - 1;
+        println!("Submit your message, or navigate by typing up or down.");
+        let message_input = input("> "); 
+        if message_input == "up".to_string() {
+            if (start > 2) { // prevent from going above the top
+                start = start - 1;
+            }
+        } else if message_input == "down".to_string() {
+            if (start < messages.len() - 3) { // prevent from going below the bottom
+                start = start + 1;
+            }
         } else {
+            messages.push(Message {
+                sender: current_user_email.to_string(),
+                date_string: "11/9/2024 11:50pm".to_string(),
+                content: message_input
+            });
             start = start + 1;
         }
         print!("{}[2J", 27 as char);
