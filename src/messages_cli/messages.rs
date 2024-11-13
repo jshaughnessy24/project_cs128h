@@ -4,12 +4,6 @@ use std::cmp::min;
 extern crate python_input;
 use python_input::input;
 
-struct Message {
-    sender: String,
-    date_string: String,
-    content: String
-}
-
 pub async fn message_cli(
     current_user_email: String,
     recipient_email: String
