@@ -1,13 +1,8 @@
-// use chrono::{self, serde};
-
 use futures::TryStreamExt;
 use mongodb::{
     bson::{self, doc, Bson, Document},
     Client, Collection,
 };
-
-// use mongodb::bson::DateTime;
-// use mongodb::bson::serde_helpers::bson_datetime_as_rfc3339_string;
 
 use crate::friends_cli::friends_routes;
 
@@ -67,6 +62,7 @@ pub async fn send_message_w_db(
     Ok(SendMessageOutcome::Success)
 }
 
+/// returns message vector of messages from author email to recipient email in no particular order. Must be sorted.
 pub async fn get_messages(
     database: mongodb::Database,
     author_email: String,
@@ -80,7 +76,6 @@ pub async fn get_messages(
             "recipient_email": recipient_email.to_string()
         }
     ).await;
-    // print!("{:?}", messages);
 
     let mut message_vec: Vec<Message> = Vec::new();
 
