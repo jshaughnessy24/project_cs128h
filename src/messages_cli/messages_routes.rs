@@ -1,9 +1,14 @@
-use chrono;
+// use chrono::{self, serde};
 
 use mongodb::{
-    bson::{doc, Bson, Document},
+    bson::{self, doc, Bson, Document},
     Client, Collection,
 };
+
+// use mongodb::bson::DateTime;
+// use mongodb::bson::serde_helpers::bson_datetime_as_rfc3339_string;
+
+use crate::friends_cli::friends_routes;
 
 #[derive(Debug, PartialEq)]
 pub enum SendMessageOutcome {
@@ -14,10 +19,11 @@ pub enum SendMessageOutcome {
 }
 
 pub struct Message {
-    sender: String,
-    date_string: String,
-    content: String
+    pub sender: String,
+    pub date_string: String,
+    pub content: String
 }
+
 
 pub async fn send_message_w_db(
     database: mongodb::Database,
@@ -29,17 +35,17 @@ pub async fn send_message_w_db(
     let user_coll: Collection<Document> = database.collection("users");
 
     // Check that the author exists
-    let current_user_doc = match friends_routes::get_user_doc(&user_coll, &current_email).await {
-        Ok(current_user_doc) => current_user_doc,
-        Err(Ok(())) => return Ok(AddFriendOutcome::CurrentEmailNotFound),
+    let author_user_doc = match friends_routes::get_user_doc(&user_coll, &author_email).await {
+        Ok(author_user_doc) => author_user_doc,
+        Err(Ok(())) => return Ok(SendMessageOutcome::AuthorEmailNotFound),
         Err(Err(err_str)) => return Err(err_str)
     };
 
     // Check that author is friends with the recipient
-    let mut current_friends_vec = friends_routes::get_friend_vec_from_doc(&current_user_doc);
+    let mut author_friends_vec = friends_routes::get_friend_vec_from_doc(&author_user_doc);
 
-    if !current_friends_vec.contains(&other_email) {
-        return Ok(AddFriendOutcome::NotFriends);
+    if !author_friends_vec.contains(&recipient_email) {
+        return Ok(SendMessageOutcome::NotFriends);
     }
 
     // Create a new message, with: message content, date sent, author email, recipient email
@@ -47,15 +53,16 @@ pub async fn send_message_w_db(
         doc! { 
             "author_email": author_email, 
             "message_content": content, 
-            "date_sent": chrono::offset::Local::now(),
+            "date_sent": bson::DateTime::now(),
             "recipient_email": recipient_email 
-        }
+        };
+
     let insert_one_result = messages_coll.insert_one(doc).await;
     if insert_one_result.is_err() {
         return Err(insert_one_result.unwrap_err().to_string());
     }
 
-    Ok(SendMessageOutcome::Success);
+    Ok(SendMessageOutcome::Success)
 }
 
 // pub async fn get_messages(
@@ -75,25 +82,65 @@ pub async fn send_message_w_db(
 
 // }
 
+#[cfg(test)]
 mod test {
+    use super::*;
+
+    #[tokio::test]
     async fn test_message_to_non_friend() {
         // This should not work
+        let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
+        let database = client.unwrap().database("cli_chat");
+
+       // TODO: Create these users
+       let send_message_outcome = send_message_w_db(
+        database,
+        "test@test.com".to_string(),
+        "".to_string(), 
+        "hello".to_string()
+       ).await;
+
+       assert_eq!(send_message_outcome.unwrap(), SendMessageOutcome::NotFriends)
     }
+
+    #[tokio::test]
     async fn test_message_to_friend() {
        // This should work
        let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
        let database = client.unwrap().database("cli_chat");
 
-       // TODO: Create these users
+        let message_coll: Collection<Document> = database.collection("messages");
+        let filter = doc! { "author_email": "test6@test.com" };
+
+        let result = message_coll.delete_one(filter).await;
+        assert_eq!(result.unwrap().deleted_count, 1);
+
        let send_message_outcome = send_message_w_db(
         database,
-        "test@test.com",
-        "test2@test.com"
-       )
-
+        "test6@test.com".to_string(),
+        "test7@test.com".to_string(), 
+        "hello".to_string()
+       ).await;
        assert_eq!(send_message_outcome.unwrap(), SendMessageOutcome::Success)
-
     }
+
+    #[tokio::test]
+    async fn test_message_author_email_not_found() {
+        // This should not work
+        let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
+        let database = client.unwrap().database("cli_chat");
+
+       let send_message_outcome = send_message_w_db(
+        database,
+        "".to_string(),
+        "test@test.com".to_string(), 
+        "hello".to_string()
+       ).await;
+
+       assert_eq!(send_message_outcome.unwrap(), SendMessageOutcome::AuthorEmailNotFound)
+    }
+
+    #[tokio::test]
     async fn test_retrieve_messages() {
         // ensure that it only gets the messages for the group chat btw. the two users
     }
