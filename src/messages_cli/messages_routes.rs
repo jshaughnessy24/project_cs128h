@@ -1,5 +1,6 @@
 // use chrono::{self, serde};
 
+use futures::TryStreamExt;
 use mongodb::{
     bson::{self, doc, Bson, Document},
     Client, Collection,
@@ -18,6 +19,7 @@ pub enum SendMessageOutcome {
     NotFriends
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Message {
     pub sender: String,
     pub date_string: String,
@@ -65,22 +67,31 @@ pub async fn send_message_w_db(
     Ok(SendMessageOutcome::Success)
 }
 
-// pub async fn get_messages(
-//     database: mongodb::Database,
-//     author_email: String,
-//     recipient_email: String
-// ) -> Result<Option<Vec<Message>>, String> {
-//     let messages_coll: Collection<Document> = database.collection("messages");
+pub async fn get_messages(
+    database: mongodb::Database,
+    author_email: String,
+    recipient_email: String
+) -> Result<Option<Vec<Message>>, String> {
+    let messages_coll: Collection<Document> = database.collection("messages");
 
-//     let messages = messages_coll.find(
-//         doc! {
-//             "author_email": author_email.to_string(),
-//             "recipient_email": recipient_email.to_string()
-//         }
-//     );
+    let mut messages = messages_coll.find(
+        doc! {
+            "author_email": author_email.to_string(),
+            "recipient_email": recipient_email.to_string()
+        }
+    ).await;
+    // print!("{:?}", messages);
 
+    let mut message_vec: Vec<Message> = Vec::new();
 
-// }
+    while let Some(doc) = messages.as_mut().unwrap().try_next().await.unwrap() {
+        message_vec.push(Message{sender:doc.get("author_email").unwrap().as_str().unwrap().to_string(), 
+        date_string: doc.get("date_sent").unwrap().as_datetime().unwrap().to_string(), 
+        content: doc.get("message_content").unwrap().as_str().unwrap().to_string()});
+    }
+
+    Ok(Some(message_vec))
+}
 
 #[cfg(test)]
 mod test {
@@ -143,5 +154,12 @@ mod test {
     #[tokio::test]
     async fn test_retrieve_messages() {
         // ensure that it only gets the messages for the group chat btw. the two users
+        let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
+        let database = client.unwrap().database("cli_chat");
+
+        let messages_vec = get_messages(database, "test4@test.com".to_string(), "test5@test.com".to_string()).await.unwrap().unwrap();
+
+        assert_eq!(messages_vec.len(), 1);
+        assert!(messages_vec.contains(&Message{sender: "test4@test.com".to_string(), date_string: "2024-11-15 7:00:22.399 +00:00:00".to_string(), content: "testing message".to_string()}))
     }
 }
