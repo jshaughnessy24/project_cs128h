@@ -186,7 +186,7 @@ pub async fn get_friend_list(database: mongodb::Database, email: String) -> Resu
 /// Returns Err(Result<(), String>)
 ///     Ok() if email not found in database
 ///     Err(String) if mongodb error occurs
-async fn get_user_doc(user_coll: &Collection<Document>, email: &String) -> Result<Document, Result<(), String>> {
+pub async fn get_user_doc(user_coll: &Collection<Document>, email: &String) -> Result<Document, Result<(), String>> {
     let user = user_coll.find_one(doc! {"email": &email}).await;
     if user.is_err() {
         return Err(Err(user.unwrap_err().to_string()));
@@ -200,7 +200,7 @@ async fn get_user_doc(user_coll: &Collection<Document>, email: &String) -> Resul
 
 /// Gets friend vector given user doc
 /// Returns Vec<String> the friend vector
-fn get_friend_vec_from_doc(user_doc: &Document) -> Vec<String> {
+pub fn get_friend_vec_from_doc(user_doc: &Document) -> Vec<String> {
     let current_friends_bson_vec: &Vec<Bson> = user_doc.get("friends").unwrap().as_array().unwrap();
     let current_friends_vec: Vec<String> = current_friends_bson_vec
         .iter()
