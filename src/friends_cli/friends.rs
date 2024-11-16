@@ -1,6 +1,6 @@
 extern crate python_input;
 use python_input::input;
-// mod message_cli;
+use crate::messages_cli::messages::messages;
 
 use mongodb::{Client, Database};
 
@@ -75,7 +75,7 @@ pub async fn friends(database: Database, user_email: String) {
             ["direct-message", friend_email] => {
                 if friend_list.contains(&friend_email.to_string()) {
                     // println!("Direct messaging {}...", friend_email);
-                    // message_cli::message_cli(user_email.to_string(), friend_email.to_string()).await;
+                    messages(database.clone(), user_email.to_string(), friend_email.to_string()).await;
                     // TODO
                 } else {
                     println!("Friend '{}' not found in your friend list.", friend_email);
