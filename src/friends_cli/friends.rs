@@ -1,10 +1,12 @@
 extern crate python_input;
 use python_input::input;
-mod message_cli;
+// mod message_cli;
 
 use mongodb::{Client, Database};
 
-use crate::friends_cli::friends_routes::{add_friend_w_db, get_friend_list, AddFriendOutcome};
+use crate::friends_cli::friends_routes::{
+    add_friend_w_db, get_friend_list, remove_friend_w_db, AddFriendOutcome, RemoveFriendOutcome,
+};
 
 pub async fn friends(database: Database, user_email: String) {
     let mut friend_list: Vec<String> = Vec::new();
@@ -58,7 +60,7 @@ pub async fn friends(database: Database, user_email: String) {
                         println!("Your email was not found.");
                     }
                     Ok(AddFriendOutcome::OtherEmailNotFound) => {
-                        println!("Friend '{}' not found.", friend_email);
+                        println!("User '{}' not found.", friend_email);
                     }
                     Ok(AddFriendOutcome::AlreadyFriends) => {
                         println!("You are already friends with '{}'.", friend_email);
@@ -70,12 +72,30 @@ pub async fn friends(database: Database, user_email: String) {
             }
             ["remove-friend", friend_email] => {
                 // TODO
-                println!("need to implement");
+                match remove_friend_w_db(database.clone(), email.clone(), friend_email.to_string())
+                    .await
+                {
+                    Ok(RemoveFriendOutcome::Success) => {
+                        println!("Friend '{}' removed!", friend_email);
+                    }
+                    Ok(RemoveFriendOutcome::CurrentEmailNotFound) => {
+                        println!("Your email was not found.");
+                    }
+                    Ok(RemoveFriendOutcome::OtherEmailNotFound) => {
+                        println!("Friend '{}' not found.", friend_email);
+                    }
+                    Ok(RemoveFriendOutcome::NotFriends) => {
+                        println!("You are not friends with '{}'.", friend_email);
+                    }
+                    Err(err) => {
+                        println!("Failed to remove friend: {}", err);
+                    }
+                }
             }
             ["direct-message", friend_email] => {
                 if friend_list.contains(&friend_email.to_string()) {
                     // println!("Direct messaging {}...", friend_email);
-                    message_cli::message_cli(user_email.to_string(), friend_email.to_string()).await;
+                    // message_cli::message_cli(user_email.to_string(), friend_email.to_string()).await;
                     // TODO
                 } else {
                     println!("Friend '{}' not found in your friend list.", friend_email);
