@@ -9,7 +9,7 @@ struct Message {
     content: String,
 }
 
-pub async fn group_message(group_name: String) {
+pub async fn group_message(current_user_email: String, group_name: String) {
     // TODO: Retrieve messages
 
     let mut messages: Vec<Message> = Vec::new();
