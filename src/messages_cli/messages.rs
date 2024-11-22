@@ -1,12 +1,62 @@
 
 use std::cmp::max;
 use std::cmp::min;
+use std::thread;
 extern crate python_input;
 use python_input::input;
 use super::messages_routes::{Message, get_messages, send_message_w_db};
 use chrono;
+use futures::TryStreamExt;
+use futures::StreamExt;
+use winit::event_loop::{EventLoop, EventLoopBuilder};
+use winit::event::{Event, WindowEvent};
 
-use mongodb::{Client, Database};
+use mongodb::{
+    bson::{self, doc, Bson, Document},
+    Client, 
+    Database, 
+    Collection
+};
+
+enum CustomEvent {
+    MongoDBChange(String)
+}
+
+async fn listen_for_changes(
+    database: Database,
+    tx: mpsc::Sender<CustomEvent>
+) -> mongodb::error::Result<()> {
+    let messages_coll: Collection<Document> = database.clone().collection("messages");
+    let mut change_stream = messages_coll.watch().await?;   
+    // TODO: Filter this stream to incoming messages only
+    // TODO: Update the list of messages sent
+
+    while let Some(event) = change_stream.next().await.transpose()? {
+        println!("Operation performed: {:?}", event.operation_type);
+        println!("Document: {:?}", event.full_document);
+        tx.send(CustomEvent::MongoDBChange("TEST RECEIVED".to_string()));
+    }
+    return Ok(());
+
+}
+
+async fn run_change_stream(
+    database: Database
+) {
+    // let collection = database.clone().collection("messages");
+
+    // let mut change_stream = collection.watch().await?;   
+
+    // while let Some(change) = change_stream.next().await {
+    //     match change {
+    //         Ok(event) => {
+    //             println!("Change detected: {:?}", event);
+    //             // Process the change event here
+    //         }
+    //         Err(e) => eprintln!("Error in change stream: {:?}", e),
+    //     }
+    // }
+}
 
 pub async fn messages(
     database: Database,
@@ -22,6 +72,22 @@ pub async fn messages(
         recipient_email.clone()
     ).await;
 
+    let cloned_db = database.clone();
+
+    let (tx, mut rx) = mpsc::channel(100);
+
+    // listen_for_changes(cloned_db);
+    tokio::spawn(listen_for_changes(cloned_db));
+
+    let event_loop = EventLoop<CustomEvent> = EventLoopBuilder::with_user_event().build();
+    let event_loop_proxy = event_loop.create_proxy();
+
+    tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            
+        }
+    })
+
     match all_messages {
         Ok(Some(messages)) => {
             messages_list = messages;
@@ -35,6 +101,9 @@ pub async fn messages(
             return;
         }
     }
+
+    // open a new thread that watches for changes 
+
 
     let mut start = 0;
     if messages_list.len() > 3 {
@@ -68,40 +137,19 @@ pub async fn messages(
                 message_input.clone()
             ).await;
 
-            let all_messages2 = get_messages(
-                database.clone(),
-                current_user_email.clone(),
-                recipient_email.clone()
-            ).await;
-            
-            match all_messages2 {
-                Ok(Some(messages)) => {
-                    messages_list = messages;
-                }
-                Err(err) => {
-                    println!("An error occurred: {}", err);
-                    return;
-                }
-                _ => {
-                    println!("An error occurred, please try again.");
-                    return;
-                }
-            }
-
-
             messages_list.push(Message {
                 sender: current_user_email.to_string(),
-                date_string: "11/9/2024 11:50pm".to_string(),
+                date_string: format!("{:?}", chrono::offset::Local::now()),
                 content: message_input
             });
             
             if messages_list.len() > 3 {
-                start = start + 1;
+                start = messages_list.len() - 3;
             } else {
                 start = 0;
             }
         }
-        print!("{}[2J", 27 as char);
+        // print!("{}[2J", 27 as char);
 
     }
 }
