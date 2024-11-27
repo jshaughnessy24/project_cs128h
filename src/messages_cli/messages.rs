@@ -137,6 +137,11 @@ pub async fn messages(
     let database_arc = Arc::new(Mutex::new(database.clone()));
     let database_clone = Arc::clone(&database_arc);
 
+    // let complete_status = Arc::new(Mutex::new(false));
+
+    // let complete_status1: Arc<Mutex<bool>> = Arc::clone(&complete_status);
+    // let complete_status2: Arc<Mutex<bool>> = Arc::clone(&complete_status);
+
     tokio::spawn(async move {
         loop { // take user input
             let mut input = String::new();
@@ -158,6 +163,9 @@ pub async fn messages(
                     }
                 } else if message_input == "back".to_string() {
                     // TODO: handle exit
+                    // let mut completion_status = complete_status1.lock().unwrap();
+                    // *completion_status = true;
+                    break;
                 } else {
                     send_message_w_db(
                         database.clone(),
@@ -225,6 +233,11 @@ pub async fn messages(
     });
 
     loop {
+        // let mut completion_status = complete_status2.lock().unwrap();
+        // println!("Completion Status: {}", *completion_status);
+        // if (*completion_status == true) {
+        //     return Ok(());
+        // }
         thread::sleep(Duration::from_secs(1));
     }
 
