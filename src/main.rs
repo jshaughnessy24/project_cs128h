@@ -1,6 +1,10 @@
 mod friends_cli; // Declare the friends_cli module directory
 use friends_cli::friends::friends; // Import the friends function from the friends module
 mod login_signup_cli;
+
+mod messages_cli;
+use messages_cli::messages::messages;
+
 use std::process::{Command, Stdio};
 
 use mongodb::Client;
@@ -14,15 +18,7 @@ async fn main() -> mongodb::error::Result<()> {
     let user_email = login_signup_cli::login_signup_cli().await;
     print!("{}[2J", 27 as char);
 
-    friends(database, user_email.unwrap()).await; // Call the friends function correctly
-    // match current_user_email {
-    //     Some(user_email) => {
-    //         message_cli::message_cli(user_email.to_string(), "test@test.com".to_string()).await;
-    //     },
-    //     _ => {
-    //         println!("No signed in user!");
-    //     }
-    // }
+    friends(database, user_email.unwrap()).await; 
 
     Ok(())
 }

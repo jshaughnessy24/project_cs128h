@@ -14,7 +14,7 @@ pub enum SendMessageOutcome {
     NotFriends
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Message {
     pub sender: String,
     pub date_string: String,
@@ -59,6 +59,8 @@ pub async fn send_message_w_db(
         return Err(insert_one_result.unwrap_err().to_string());
     }
 
+    println!("Successfully sent the message.");
+
     Ok(SendMessageOutcome::Success)
 }
 
@@ -72,8 +74,16 @@ pub async fn get_messages(
 
     let mut messages = messages_coll.find(
         doc! {
-            "author_email": author_email.to_string(),
-            "recipient_email": recipient_email.to_string()
+            "$or": [
+                {
+                    "author_email": author_email.to_string(),
+                    "recipient_email": recipient_email.to_string()
+                },
+                {
+                    "author_email": recipient_email.to_string(),
+                    "recipient_email": author_email.to_string()
+                }
+            ]
         }
     ).await;
 
