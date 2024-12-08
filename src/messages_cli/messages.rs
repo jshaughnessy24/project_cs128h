@@ -35,11 +35,6 @@ async fn listen_for_changes(
 ) -> mongodb::error::Result<()> {
     let messages_coll: Collection<Document> = database.clone().collection("messages");
     let mut change_stream = messages_coll.watch().await?;   
-    // TODO: Filter this stream to incoming messages only
-
-
-    // TODO: Update the list of messages sent
-
     while let Some(event) = change_stream.next().await.transpose()? { // this triggers a rerender
         // println!("Operation performed: {:?}", event.operation_type);
         // println!("Document: {:?}", event.full_document);
@@ -60,27 +55,11 @@ async fn listen_for_changes(
                 } else {
                     *start = 0;
                 }
-                print_messages(&msgs, current_user_email.clone(), start.clone());    
+                print_messages(&msgs, current_user_email.clone(), start.clone());  
+                println!("");  
+                println!("Submit your message, or navigate by typing up or down: ");
             }
         };
-
-
-
-        // if let Some(document_data) = event.full_document {
-        //     if let Some(recipient_email) = document_data["recipient_email"] {
-        //     if recipient_email == current_user_email {
-        //         let author_email = document_data["author_email"];
-        //         let message_content = document_data["message_content"];
-        //         let mut msgs = messages_for_input.lock().unwrap();
-        //         msgs.push(Message {
-        //             sender: current_user_email.clone(),
-        //             date_string: format!("{:?}", chrono::offset::Local::now()),
-        //             content: message_content.clone()
-        //         });
-        //         print_messages(&msgs, current_user_email.clone(), start.clone());           
-        //     }
-        // }
-    
     }
     return Ok(());
 
@@ -137,10 +116,12 @@ pub async fn messages(
     let database_arc = Arc::new(Mutex::new(database.clone()));
     let database_clone = Arc::clone(&database_arc);
 
-    // let complete_status = Arc::new(Mutex::new(false));
+    let complete_status = Arc::new(Mutex::new(false));
 
-    // let complete_status1: Arc<Mutex<bool>> = Arc::clone(&complete_status);
+    let complete_status1: Arc<Mutex<bool>> = Arc::clone(&complete_status);
     // let complete_status2: Arc<Mutex<bool>> = Arc::clone(&complete_status);
+
+    
 
     tokio::spawn(async move {
         loop { // take user input
@@ -163,8 +144,8 @@ pub async fn messages(
                     }
                 } else if message_input == "back".to_string() {
                     // TODO: handle exit
-                    // let mut completion_status = complete_status1.lock().unwrap();
-                    // *completion_status = true;
+                    let mut completion_status = complete_status1.lock().unwrap();
+                    *completion_status = true;
                     break;
                 } else {
                     send_message_w_db(
@@ -187,7 +168,6 @@ pub async fn messages(
                         *start = 0;
                     }   
                 }
-                // msgs.push(format!("You: {}", input));
                 let mut msgs = messages_for_input.lock().unwrap();
                 let mut start = shared_counter1.lock().unwrap();
                 print_messages(&msgs, recipient_email_input.to_string(), start.clone());
@@ -200,8 +180,8 @@ pub async fn messages(
 
     tokio::spawn(async move {
         let db = {
-            let db_lock = database_clone.lock().unwrap(); // Access the `Database`
-            db_lock.clone() // Clone the `Database` for passing
+            let db_lock = database_clone.lock().unwrap(); 
+            db_lock.clone()
         };
         listen_for_changes(
             db,
@@ -209,124 +189,21 @@ pub async fn messages(
             current_user_email_input2.to_string(),
             shared_counter2.clone()
         ).await;
-        // let messages_coll: Collection<Document> = database.clone().collection("messages");
-        // let mut change_stream = messages_coll.watch().await?;
-        // while let Some(event) = change_stream.next().await.transpose()? { // this triggers a rerender
-        //     println!("Operation performed: {:?}", event.operation_type);
-        //     println!("Document: {:?}", event.full_document);
-        // }
-        // let simulated_received_messages = vec![
-        //     "Hello from Alice!",
-        //     "Bob: How's it going?",
-        //     "System: Server will restart soon."
-        // ];
-        // for msg in simulated_received_messages {
-        //     thread::sleep(Duration::from_secs(5)); // Simulate a delay
-        //     let mut msgs = messages_for_receive.lock().unwrap();
-        //     msgs.push(Message {
-        //         sender: current_user_email.to_string(),
-        //         date_string: format!("{:?}", chrono::offset::Local::now()),
-        //         content: msg.to_string()
-        //     });
-        //     print_messages(&msgs, recipient_email_input2.to_string(), start.clone());
-        // }
     });
 
     loop {
-        // let mut completion_status = complete_status2.lock().unwrap();
-        // println!("Completion Status: {}", *completion_status);
-        // if (*completion_status == true) {
-        //     return Ok(());
-        // }
         thread::sleep(Duration::from_secs(1));
     }
 
     return Ok(());
-
-
-
-    // loop {
-        // println!("\x1b[1mDirect Messages with {}\x1b[0m\n", recipient_email);
-        // println!("\n[back] Back to friends list");
-        // for i in max(0,start)..min(messages_list.len(), start+3) {
-        //     println!("[{}, {}]", messages_list[i].sender, messages_list[i].date_string);
-        //     println!("{}\n", messages_list[i].content);
-        // }
-    //     println!("Submit your message, or navigate by typing up or down.");
-    //     let message_input = input("> "); 
-        // if message_input == "up".to_string() {
-        //     if (start > 2) { // prevent from going above the top
-        //         start = start - 1;
-        //     }
-        // } else if message_input == "down".to_string() {
-        //     if (start < messages_list.len() - 3) { // prevent from going below the bottom
-        //         start = start + 1;
-        //     }
-        // } else if message_input == "back".to_string() {
-        //     return true;
-    //     } else {
-    //         send_message_w_db(
-    //             database.clone(),
-    //             current_user_email.clone(),
-    //             recipient_email.clone(),
-    //             message_input.clone()
-    //         ).await;
-    //         break; // this loop breaks; the parent loop will create a new one
-
-            // messages_list.push(Message {
-            //     sender: current_user_email.to_string(),
-            //     date_string: format!("{:?}", chrono::offset::Local::now()),
-            //     content: message_input
-            // });
-            
-            // if messages_list.len() > 3 {
-            //     start = messages_list.len() - 3;
-            // } else {
-            //     start = 0;
-            // }
-    //     }
-    //     // print!("{}[2J", 27 as char);
-
-    // }
-    // return Ok(());
-
 }
 
 fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: usize) {
+    println!("{}[2J", 27 as char);
     println!("\x1b[1mDirect Messages with {}\x1b[0m\n", recipient_email);
-    println!("\n[back] Back to friends list");
+    println!("\n[back] Back to friends list\n");
     for i in max(0,start)..min(messages_list.len(), start+3) {
         println!("[{}, {}]", messages_list[i].sender, messages_list[i].date_string);
         println!("{}\n", messages_list[i].content);
     }
 }
-
-// macro_rules! do_loop {(
-//     $body:block while $cond:expr
-// ) => ({
-//     let mut first = true;
-//     while ::core::mem::replace(&mut first, false) || $cond
-//         $body
-// })}
-
-// pub async fn messages(
-//     database: Database,
-//     current_user_email: String,
-//     recipient_email: String
-// ) -> mongodb::error::Result<()> {
-
-//     let messages_coll: Collection<Document> = database.clone().collection("messages");
-//     let mut change_stream = messages_coll.watch().await?;   
-//     let mut full_break: bool = render_messages(database.clone(), current_user_email.clone(), recipient_email.clone()).await;
-//     if (full_break) {
-//         return Ok(());
-//     }
-    
-//     while let Some(event) = change_stream.next().await.transpose()? { 
-//         full_break = render_messages(database.clone(), current_user_email.clone(), recipient_email.clone()).await;
-//         if (full_break) {
-//             break;
-//         }
-//     }
-//     return Ok(());
-// }
