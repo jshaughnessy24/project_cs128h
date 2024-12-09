@@ -9,6 +9,11 @@ use crate::friends_cli::friends_routes::{
     add_friend_w_db, get_friend_list, remove_friend_w_db, AddFriendOutcome, RemoveFriendOutcome,
 };
 
+use mongodb::Database;
+
+/// Handles the friends menu
+///    database: mongodb database
+///    user_email: email of the current user
 pub async fn friends(database: Database, user_email: String) {
     let mut friend_list: Vec<String> = Vec::new();
 
@@ -17,6 +22,7 @@ pub async fn friends(database: Database, user_email: String) {
 
         let email = user_email.to_string();
 
+        // Load the friends list and display it if possible
         match get_friend_list(database.clone(), email.clone()).await {
             Ok(Some(friends)) => {
                 if friends.is_empty() {
@@ -53,6 +59,7 @@ pub async fn friends(database: Database, user_email: String) {
                 break;
             }
             ["add-friend", friend_email] => {
+                // Handle attempting to add a friend
                 match add_friend_w_db(database.clone(), email.clone(), friend_email.to_string())
                     .await
                 {
@@ -95,7 +102,14 @@ pub async fn friends(database: Database, user_email: String) {
                 }
             }
             ["direct-message", friend_email] => {
+                // Handle direct messaging a friend
                 if friend_list.contains(&friend_email.to_string()) {
+                    messages(
+                        database.clone(),
+                        user_email.to_string(),
+                        friend_email.to_string(),
+                    )
+                    .await;
                     messages(
                         database.clone(),
                         user_email.clone(),

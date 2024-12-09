@@ -1,6 +1,6 @@
 use mongodb::{
     bson::{doc, Bson, Document},
-    Client, Collection,
+    Collection
 };
 
 #[derive(Debug, PartialEq)]
@@ -191,7 +191,7 @@ pub async fn get_user_doc(user_coll: &Collection<Document>, email: &String) -> R
     if user.is_err() {
         return Err(Err(user.unwrap_err().to_string()));
     }
-    if ((&user).as_ref().unwrap()).is_none() {
+    if (&user).as_ref().unwrap().is_none() {
         return Err(Ok(()));
     }
     let user_doc = user.unwrap().unwrap();

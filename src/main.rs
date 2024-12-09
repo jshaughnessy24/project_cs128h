@@ -7,20 +7,21 @@ mod login_signup_cli;
 use group_chats_cli::group_chats::group_chats;
 
 mod messages_cli;
-use messages_cli::messages::messages;
 
-use std::process::{Command, Stdio};
+mod clear_console;
+use clear_console::clear_console::clear_console;
 
 use mongodb::Client;
 
 #[tokio::main]
 async fn main() -> mongodb::error::Result<()> {
+    // Connect to the MongoDB client and get the database
     let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
     let database = client.unwrap().database("cli_chat");
 
-    print!("{}[2J", 27 as char);
+    clear_console();
     let user_email = login_signup_cli::login_signup_cli().await;
-    print!("{}[2J", 27 as char);
+    clear_console();
 
     group_chats(database, user_email.unwrap()).await;
 

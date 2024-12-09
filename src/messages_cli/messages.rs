@@ -2,42 +2,37 @@
 use std::cmp::max;
 use std::cmp::min;
 use std::thread;
-extern crate python_input;
-use python_input::input;
-use super::messages_routes::{Message, get_messages, send_message_w_db};
+
+use crate::messages_cli::messages_routes::{Message, get_messages, send_message_w_db};
 use chrono;
-use futures::TryStreamExt;
 use futures::StreamExt;
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::io::{self, Write};
 
-use tokio::runtime::Runtime;
-use tokio::time::*;
+use crate::clear_console::clear_console::clear_console;
 
 use mongodb::{
-    bson::{self, doc, Bson, Document},
-    Client, 
+    bson::{Document},
     Database, 
     Collection
 };
 
-// enum CustomEvent {
-//     MongoDBChange(String)
-// }
-
-async fn listen_for_changes(
+/// Listens for new incoming messages and prints them to console.
+///   database: mongodb database
+///   messages: list of messages
+///   current_user_email: email of the current user
+///   shared_start: start index to begin printing from
+async fn listen_for_new_incoming_messages(
     database: Database,
     messages: Arc<Mutex<Vec<Message>>>,
     current_user_email: String,
-    shared_counter: Arc<Mutex<usize>>
+    shared_start: Arc<Mutex<usize>>
 ) -> mongodb::error::Result<()> {
     let messages_coll: Collection<Document> = database.clone().collection("messages");
     let mut change_stream = messages_coll.watch().await?;   
-    while let Some(event) = change_stream.next().await.transpose()? { // this triggers a rerender
-        // println!("Operation performed: {:?}", event.operation_type);
-        // println!("Document: {:?}", event.full_document);
+    while let Some(event) = change_stream.next().await.transpose()? { 
         if let Some(doc) = event.full_document {
             let recipient_email = doc.get("recipient_email").unwrap().as_str().unwrap().to_string();
             if recipient_email == current_user_email {
@@ -48,7 +43,7 @@ async fn listen_for_changes(
                 };
                 let mut msgs = messages.lock().unwrap();
                 msgs.push(new_message);
-                let mut start = shared_counter.lock().unwrap();
+                let mut start = shared_start.lock().unwrap();
 
                 if msgs.len() > 3 {
                     *start = msgs.len() - 3;
@@ -62,9 +57,26 @@ async fn listen_for_changes(
         };
     }
     return Ok(());
-
 }
 
+/// Prints received messages to console.
+///   messages_list: list of messages to print
+///   recipient_email: email of the recipient
+///   start: index to start printing from
+fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: usize) {
+    clear_console();
+    println!("\x1b[1mDirect Messages with {}\x1b[0m\n", recipient_email);
+    println!("\n[back] Back to friends list\n");
+    for i in max(0,start)..min(messages_list.len(), start+3) {
+        println!("[{}, {}]", messages_list[i].sender, messages_list[i].date_string);
+        println!("{}\n", messages_list[i].content);
+    }
+}
+
+/// Handles messages between users.
+///   database: mongodb database
+///   current_user_email: email of the current user
+///   recipient_email: email of the recipient
 pub async fn messages(
     database: Database,
     current_user_email: String,
@@ -76,7 +88,7 @@ pub async fn messages(
         database.clone(),
         current_user_email.clone(),
         recipient_email.clone()
-    ).await;
+    ).await; // Messages are received in ascending order (most recent at last, oldest at first)
 
     match all_messages {
         Ok(Some(messages)) => {
@@ -101,10 +113,10 @@ pub async fn messages(
         start = messages_list.len() - 3;
     }
 
-    let shared_counter = Arc::new(Mutex::new(start));
+    let shared_start = Arc::new(Mutex::new(start));
 
-    let shared_counter1: Arc<Mutex<usize>> = Arc::clone(&shared_counter);
-    let shared_counter2: Arc<Mutex<usize>> = Arc::clone(&shared_counter);
+    let shared_start1: Arc<Mutex<usize>> = Arc::clone(&shared_start);
+    let shared_start2: Arc<Mutex<usize>> = Arc::clone(&shared_start);
 
     let current_user_email_arc = Arc::new(current_user_email.clone());
     let recipient_email_arc = Arc::new(recipient_email.clone());
@@ -116,15 +128,22 @@ pub async fn messages(
     let database_arc = Arc::new(Mutex::new(database.clone()));
     let database_clone = Arc::clone(&database_arc);
 
+    // When complete_status is true, the listener task will be aborted
     let complete_status = Arc::new(Mutex::new(false));
 
-    let complete_status1: Arc<Mutex<bool>> = Arc::clone(&complete_status);
-    // let complete_status2: Arc<Mutex<bool>> = Arc::clone(&complete_status);
-
-    
+    let complete_status_clone = Arc::clone(&complete_status);
 
     tokio::spawn(async move {
-        loop { // take user input
+        // This thread handles the initial loading of messages
+        // and responds to user actions (send message, go up, down, back)
+        let mut first_run = true;
+        loop { 
+            if first_run {
+                let mut msgs = messages_for_input.lock().unwrap();
+                print_messages(&msgs, current_user_email.clone(), start.clone());  
+                first_run = false;
+            }
+            println!("");  
             let mut input = String::new();
             print!("Submit your message, or navigate by typing up or down: ");
             io::stdout().flush().unwrap();
@@ -132,28 +151,33 @@ pub async fn messages(
             let message_input = input.trim().to_string();
             if !input.is_empty() {
                 if message_input == "up".to_string() {
-                    let mut start = shared_counter.lock().unwrap();
-                    if (*start > 2) { // prevent from going above the top
+                    // Move the start up 1
+                    let mut start = shared_start.lock().unwrap();
+                    if *start > 2 { // Prevent from going above the top
                         *start = *start - 1;
                     }
                 } else if message_input == "down".to_string() {
-                    let mut start = shared_counter.lock().unwrap();
+                    // Move the start down 1
+                    let mut start = shared_start.lock().unwrap();
                     let mut msgs = messages_for_input.lock().unwrap();
-                    if (*start < msgs.len() - 3) { // prevent from going below the bottom
+                    if *start < msgs.len() - 3 { // Prevent from going below the bottom
                         *start = *start + 1;
                     }
                 } else if message_input == "back".to_string() {
-                    // TODO: handle exit
-                    let mut completion_status = complete_status1.lock().unwrap();
-                    *completion_status = true;
+                    // Return to the friends list. Break the loop.
+                    let mut curr_completion_status = complete_status_clone.lock().unwrap(); 
+                    *curr_completion_status = true;
                     break;
                 } else {
+                    // Send the message. The message is message_input.
                     send_message_w_db(
                         database.clone(),
                         current_user_email_input.to_string(),
                         recipient_email.to_string(),
                         message_input.clone()
                     ).await;
+
+                    // Add the new message.
                     let mut msgs = messages_for_input.lock().unwrap();
                     msgs.push(Message {
                         sender: current_user_email_input.to_string(),
@@ -161,7 +185,7 @@ pub async fn messages(
                         content: message_input.clone()
                     });
 
-                    let mut start = shared_counter.lock().unwrap();
+                    let mut start = shared_start.lock().unwrap();
                     if msgs.len() > 3 {
                         *start = msgs.len() - 3;
                     } else {
@@ -169,7 +193,7 @@ pub async fn messages(
                     }   
                 }
                 let mut msgs = messages_for_input.lock().unwrap();
-                let mut start = shared_counter1.lock().unwrap();
+                let mut start = shared_start1.lock().unwrap();
                 print_messages(&msgs, recipient_email_input.to_string(), start.clone());
             }
         }
@@ -178,32 +202,28 @@ pub async fn messages(
 
     let messages_for_receive = Arc::clone(&messages);
 
-    tokio::spawn(async move {
+    let listener_task = tokio::spawn(async move {
+        // This thread listens for new incoming messages
         let db = {
             let db_lock = database_clone.lock().unwrap(); 
             db_lock.clone()
         };
-        listen_for_changes(
+        listen_for_new_incoming_messages(
             db,
             messages_for_receive.clone(),
             current_user_email_input2.to_string(),
-            shared_counter2.clone()
+            shared_start2.clone()
         ).await;
     });
 
     loop {
+        // This keeps the main thread alive until the listener task is aborted
+        if *complete_status.lock().unwrap() {
+            listener_task.abort();
+            break;
+        }
         thread::sleep(Duration::from_secs(1));
     }
 
     return Ok(());
-}
-
-fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: usize) {
-    println!("{}[2J", 27 as char);
-    println!("\x1b[1mDirect Messages with {}\x1b[0m\n", recipient_email);
-    println!("\n[back] Back to friends list\n");
-    for i in max(0,start)..min(messages_list.len(), start+3) {
-        println!("[{}, {}]", messages_list[i].sender, messages_list[i].date_string);
-        println!("{}\n", messages_list[i].content);
-    }
 }

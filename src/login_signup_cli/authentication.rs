@@ -53,7 +53,7 @@ async fn sign_in_w_db(
     if user.is_err() {
         return Err(user.unwrap_err().to_string());
     }
-    if ((&user).as_ref().unwrap()).is_none() {
+    if (&user).as_ref().unwrap().is_none() {
         return Ok(SignInOutcome::EmailNotFound);
     }
 
