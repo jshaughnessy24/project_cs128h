@@ -1,23 +1,18 @@
-
 use std::cmp::max;
 use std::cmp::min;
 use std::thread;
 
-use crate::messages_cli::messages_routes::{Message, get_messages, send_message_w_db};
+use crate::messages_cli::messages_routes::{get_messages, send_message_w_db, Message};
 use chrono;
 use futures::StreamExt;
 
+use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::io::{self, Write};
 
 use crate::clear_console::clear_console::clear_console;
 
-use mongodb::{
-    bson::{Document},
-    Database, 
-    Collection
-};
+use mongodb::{bson::Document, Collection, Database};
 
 /// Listens for new incoming messages and prints them to console.
 ///   database: mongodb database
@@ -28,18 +23,38 @@ async fn listen_for_new_incoming_messages(
     database: Database,
     messages: Arc<Mutex<Vec<Message>>>,
     current_user_email: String,
-    shared_start: Arc<Mutex<usize>>
+    shared_start: Arc<Mutex<usize>>,
 ) -> mongodb::error::Result<()> {
     let messages_coll: Collection<Document> = database.clone().collection("messages");
-    let mut change_stream = messages_coll.watch().await?;   
-    while let Some(event) = change_stream.next().await.transpose()? { 
+    let mut change_stream = messages_coll.watch().await?;
+    while let Some(event) = change_stream.next().await.transpose()? {
         if let Some(doc) = event.full_document {
-            let recipient_email = doc.get("recipient_email").unwrap().as_str().unwrap().to_string();
+            let recipient_email = doc
+                .get("recipient_email")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string();
             if recipient_email == current_user_email {
                 let new_message = Message {
-                    sender: doc.get("author_email").unwrap().as_str().unwrap().to_string(),
-                    date_string: doc.get("date_sent").unwrap().as_datetime().unwrap().to_string(), 
-                    content: doc.get("message_content").unwrap().as_str().unwrap().to_string()
+                    sender: doc
+                        .get("author_email")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                    date_string: doc
+                        .get("date_sent")
+                        .unwrap()
+                        .as_datetime()
+                        .unwrap()
+                        .to_string(),
+                    content: doc
+                        .get("message_content")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
                 };
                 let mut msgs = messages.lock().unwrap();
                 msgs.push(new_message);
@@ -50,8 +65,8 @@ async fn listen_for_new_incoming_messages(
                 } else {
                     *start = 0;
                 }
-                print_messages(&msgs, current_user_email.clone(), start.clone());  
-                println!("");  
+                print_messages(&msgs, current_user_email.clone(), start.clone());
+                println!("");
                 println!("Submit your message, or navigate by typing up or down: ");
             }
         };
@@ -67,8 +82,11 @@ fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: 
     clear_console();
     println!("\x1b[1mDirect Messages with {}\x1b[0m\n", recipient_email);
     println!("\n[back] Back to friends list\n");
-    for i in max(0,start)..min(messages_list.len(), start+3) {
-        println!("[{}, {}]", messages_list[i].sender, messages_list[i].date_string);
+    for i in max(0, start)..min(messages_list.len(), start + 3) {
+        println!(
+            "[{}, {}]",
+            messages_list[i].sender, messages_list[i].date_string
+        );
         println!("{}\n", messages_list[i].content);
     }
 }
@@ -80,15 +98,17 @@ fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: 
 pub async fn messages(
     database: Database,
     current_user_email: String,
-    recipient_email: String
+    recipient_email: String,
 ) -> mongodb::error::Result<()> {
+    clear_console();
     let mut messages_list: Vec<Message> = Vec::new();
 
     let all_messages = get_messages(
         database.clone(),
         current_user_email.clone(),
-        recipient_email.clone()
-    ).await; // Messages are received in ascending order (most recent at last, oldest at first)
+        recipient_email.clone(),
+    )
+    .await; // Messages are received in ascending order (most recent at last, oldest at first)
 
     match all_messages {
         Ok(Some(messages)) => {
@@ -137,13 +157,13 @@ pub async fn messages(
         // This thread handles the initial loading of messages
         // and responds to user actions (send message, go up, down, back)
         let mut first_run = true;
-        loop { 
+        loop {
             if first_run {
                 let mut msgs = messages_for_input.lock().unwrap();
-                print_messages(&msgs, current_user_email.clone(), start.clone());  
+                print_messages(&msgs, current_user_email.clone(), start.clone());
                 first_run = false;
             }
-            println!("");  
+            println!("");
             let mut input = String::new();
             print!("Submit your message, or navigate by typing up or down: ");
             io::stdout().flush().unwrap();
@@ -153,19 +173,22 @@ pub async fn messages(
                 if message_input == "up".to_string() {
                     // Move the start up 1
                     let mut start = shared_start.lock().unwrap();
-                    if *start > 2 { // Prevent from going above the top
+                    if *start > 2 {
+                        // Prevent from going above the top
                         *start = *start - 1;
                     }
                 } else if message_input == "down".to_string() {
                     // Move the start down 1
                     let mut start = shared_start.lock().unwrap();
                     let mut msgs = messages_for_input.lock().unwrap();
-                    if *start < msgs.len() - 3 { // Prevent from going below the bottom
+                    if *start < msgs.len() - 3 {
+                        // Prevent from going below the bottom
                         *start = *start + 1;
                     }
                 } else if message_input == "back".to_string() {
                     // Return to the friends list. Break the loop.
-                    let mut curr_completion_status = complete_status_clone.lock().unwrap(); 
+                    clear_console();
+                    let mut curr_completion_status = complete_status_clone.lock().unwrap();
                     *curr_completion_status = true;
                     break;
                 } else {
@@ -174,15 +197,16 @@ pub async fn messages(
                         database.clone(),
                         current_user_email_input.to_string(),
                         recipient_email.to_string(),
-                        message_input.clone()
-                    ).await;
+                        message_input.clone(),
+                    )
+                    .await;
 
                     // Add the new message.
                     let mut msgs = messages_for_input.lock().unwrap();
                     msgs.push(Message {
                         sender: current_user_email_input.to_string(),
                         date_string: format!("{:?}", chrono::offset::Local::now()),
-                        content: message_input.clone()
+                        content: message_input.clone(),
                     });
 
                     let mut start = shared_start.lock().unwrap();
@@ -190,7 +214,7 @@ pub async fn messages(
                         *start = msgs.len() - 3;
                     } else {
                         *start = 0;
-                    }   
+                    }
                 }
                 let mut msgs = messages_for_input.lock().unwrap();
                 let mut start = shared_start1.lock().unwrap();
@@ -205,15 +229,16 @@ pub async fn messages(
     let listener_task = tokio::spawn(async move {
         // This thread listens for new incoming messages
         let db = {
-            let db_lock = database_clone.lock().unwrap(); 
+            let db_lock = database_clone.lock().unwrap();
             db_lock.clone()
         };
         listen_for_new_incoming_messages(
             db,
             messages_for_receive.clone(),
             current_user_email_input2.to_string(),
-            shared_start2.clone()
-        ).await;
+            shared_start2.clone(),
+        )
+        .await;
     });
 
     loop {

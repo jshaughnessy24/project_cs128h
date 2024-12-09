@@ -1,20 +1,19 @@
 extern crate python_input;
-use crate::homepage::homepage;
 use crate::messages_cli::messages::messages;
+use crate::{clear_console, homepage::homepage};
 use python_input::input;
 
-use mongodb::{Client, Database};
+use mongodb::Database;
 
 use crate::friends_cli::friends_routes::{
     add_friend_w_db, get_friend_list, remove_friend_w_db, AddFriendOutcome, RemoveFriendOutcome,
 };
 
-use mongodb::Database;
-
 /// Handles the friends menu
 ///    database: mongodb database
 ///    user_email: email of the current user
 pub async fn friends(database: Database, user_email: String) {
+    clear_console();
     let mut friend_list: Vec<String> = Vec::new();
 
     loop {
@@ -53,9 +52,9 @@ pub async fn friends(database: Database, user_email: String) {
 
         match parts.as_slice() {
             ["back"] => {
-                print!("calling homepage isn't working for some reason");
-                // homepage(database.clone(), user_email.clone()).await;
-                print!("Returning to homepage...");
+                // clear_console();
+                let boxed_homepage = Box::pin(homepage(database.clone(), user_email.clone()));
+                boxed_homepage.await;
                 break;
             }
             ["add-friend", friend_email] => {
@@ -79,6 +78,7 @@ pub async fn friends(database: Database, user_email: String) {
                         println!("Failed to add friend: {}", err);
                     }
                 }
+                clear_console();
             }
             ["remove-friend", friend_email] => {
                 match remove_friend_w_db(database.clone(), email.clone(), friend_email.to_string())
@@ -100,19 +100,15 @@ pub async fn friends(database: Database, user_email: String) {
                         println!("Failed to remove friend: {}", err);
                     }
                 }
+                clear_console();
             }
             ["direct-message", friend_email] => {
                 // Handle direct messaging a friend
                 if friend_list.contains(&friend_email.to_string()) {
+                    // clear_console();
                     messages(
                         database.clone(),
                         user_email.to_string(),
-                        friend_email.to_string(),
-                    )
-                    .await;
-                    messages(
-                        database.clone(),
-                        user_email.clone(),
                         friend_email.to_string(),
                     )
                     .await;

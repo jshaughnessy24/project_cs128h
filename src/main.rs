@@ -23,7 +23,9 @@ async fn main() -> mongodb::error::Result<()> {
     let user_email = login_signup_cli::login_signup_cli().await;
     clear_console();
 
-    group_chats(database, user_email.unwrap()).await;
+    homepage(database, user_email.unwrap()).await;
+
+    // group_chats(database, user_email.unwrap()).await;
 
     // homepage(database, user_email.unwrap()).await;
 

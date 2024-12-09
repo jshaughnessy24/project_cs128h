@@ -1,24 +1,32 @@
 extern crate python_input;
+use std::sync::{Arc, Mutex};
+
 use super::group_chats_routes::{add_group_chat_w_db, AddGroupChatOutcome};
-use crate::group_chats_cli::group_chat_messages::group_chat_messages;
+use crate::{clear_console, group_chats_cli::group_chat_messages::group_chat_messages};
 use mongodb::{bson::oid::ObjectId, Database};
 use python_input::input;
 
 /// Function to create a new group chat and open its messages view upon success.
 pub async fn new_group_chat(database: Database, user_email: String) {
+    clear_console();
     println!("\x1b[1mCreate New Group Chat\x1b[0m");
     println!();
+
+    let complete_status = Arc::new(Mutex::new(false));
+    let complete_status_clone = Arc::clone(&complete_status);
 
     loop {
         // Provide options to the user
         println!("\nOptions:");
-        println!("[back] Back to Homepage");
+        println!("[back] Back to Homepage\n");
 
         // Get the group chat name
         let group_chat_name = loop {
             let input_name = input("Chat name: ").trim().to_string();
             if input_name.eq_ignore_ascii_case("back") {
-                println!("Returning to homepage...");
+                // clear_console();
+                let mut curr_completion_status = complete_status_clone.lock().unwrap();
+                *curr_completion_status = true;
                 return;
             }
             if input_name.is_empty() {
@@ -33,7 +41,9 @@ pub async fn new_group_chat(database: Database, user_email: String) {
             println!("\nEnter the email addresses of friends to add, separated by commas:");
             let friends_input = input("Friends: ").trim().to_string();
             if friends_input.eq_ignore_ascii_case("back") {
-                println!("Returning to homepage...");
+                // clear_console();
+                let mut curr_completion_status = complete_status_clone.lock().unwrap();
+                *curr_completion_status = true;
                 return;
             }
 
@@ -72,7 +82,7 @@ pub async fn new_group_chat(database: Database, user_email: String) {
                 .await
                 {
                     Ok(_) => {
-                        println!("Exiting group chat '{}'.", group_chat_name);
+                        println!("Exiting group chat...");
                         return;
                     }
                     Err(err) => {
