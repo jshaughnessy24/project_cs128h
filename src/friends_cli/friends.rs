@@ -1,24 +1,26 @@
 extern crate python_input;
+use crate::messages_cli::messages::messages;
+use crate::{clear_console, homepage::homepage};
 use python_input::input;
 
-use crate::messages_cli::messages::messages;
+use mongodb::Database;
+
 use crate::friends_cli::friends_routes::{
     add_friend_w_db, get_friend_list, remove_friend_w_db, AddFriendOutcome, RemoveFriendOutcome,
 };
-
-use mongodb::Database;
 
 /// Handles the friends menu
 ///    database: mongodb database
 ///    user_email: email of the current user
 pub async fn friends(database: Database, user_email: String) {
+    clear_console();
     let mut friend_list: Vec<String> = Vec::new();
 
     loop {
         println!("\x1b[1mFriends List\x1b[0m\n");
 
         let email = user_email.to_string();
-        
+
         // Load the friends list and display it if possible
         match get_friend_list(database.clone(), email.clone()).await {
             Ok(Some(friends)) => {
@@ -46,11 +48,13 @@ pub async fn friends(database: Database, user_email: String) {
         println!("[direct-message] [email] DM friend\n");
 
         let choice = input("What would you like to do? ");
-
         let parts: Vec<&str> = choice.split_whitespace().collect();
+
         match parts.as_slice() {
             ["back"] => {
-                println!("Returning to Homepage...");
+                // clear_console();
+                let boxed_homepage = Box::pin(homepage(database.clone(), user_email.clone()));
+                boxed_homepage.await;
                 break;
             }
             ["add-friend", friend_email] => {
@@ -74,9 +78,9 @@ pub async fn friends(database: Database, user_email: String) {
                         println!("Failed to add friend: {}", err);
                     }
                 }
+                clear_console();
             }
             ["remove-friend", friend_email] => {
-                // Handle attempting to remove a friend
                 match remove_friend_w_db(database.clone(), email.clone(), friend_email.to_string())
                     .await
                 {
@@ -96,11 +100,18 @@ pub async fn friends(database: Database, user_email: String) {
                         println!("Failed to remove friend: {}", err);
                     }
                 }
+                clear_console();
             }
             ["direct-message", friend_email] => {
                 // Handle direct messaging a friend
                 if friend_list.contains(&friend_email.to_string()) {
-                    messages(database.clone(), user_email.to_string(), friend_email.to_string()).await;
+                    // clear_console();
+                    messages(
+                        database.clone(),
+                        user_email.to_string(),
+                        friend_email.to_string(),
+                    )
+                    .await;
                 } else {
                     println!("Friend '{}' not found in your friend list.", friend_email);
                 }

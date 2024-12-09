@@ -2,9 +2,12 @@ use std::cmp::max;
 use std::cmp::min;
 use std::thread;
 
-use crate::messages_cli::messages_routes::{get_messages, send_message_w_db, Message};
+use crate::group_chats_cli::group_chats_routes::{
+    get_messages_group_chat, send_message_group_chat_w_db, Message,
+};
 use chrono;
 use futures::StreamExt;
+use mongodb::bson::oid::ObjectId;
 
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
@@ -23,6 +26,7 @@ async fn listen_for_new_incoming_messages(
     database: Database,
     messages: Arc<Mutex<Vec<Message>>>,
     current_user_email: String,
+    group_chat_name: String,
     shared_start: Arc<Mutex<usize>>,
 ) -> mongodb::error::Result<()> {
     let messages_coll: Collection<Document> = database.clone().collection("messages");
@@ -65,7 +69,12 @@ async fn listen_for_new_incoming_messages(
                 } else {
                     *start = 0;
                 }
-                print_messages(&msgs, current_user_email.clone(), start.clone());
+                print_messages(
+                    &msgs,
+                    // current_user_email.clone(),
+                    group_chat_name.clone(),
+                    start.clone(),
+                );
                 println!("");
                 println!("Submit your message, or navigate by typing up or down: ");
             }
@@ -77,11 +86,12 @@ async fn listen_for_new_incoming_messages(
 /// Prints received messages to console.
 ///   messages_list: list of messages to print
 ///   recipient_email: email of the recipient
+///   group_chat_name: name of group chat
 ///   start: index to start printing from
-fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: usize) {
+fn print_messages(messages_list: &Vec<Message>, group_chat_name: String, start: usize) {
     clear_console();
-    println!("\x1b[1mDirect Messages with {}\x1b[0m\n", recipient_email);
-    println!("\n[back] Back to friends list\n");
+    println!("\x1b[1m{}\x1b[0m\n", group_chat_name);
+    println!("\n[back] Back to group chats menu\n");
     for i in max(0, start)..min(messages_list.len(), start + 3) {
         println!(
             "[{}, {}]",
@@ -95,20 +105,18 @@ fn print_messages(messages_list: &Vec<Message>, recipient_email: String, start: 
 ///   database: mongodb database
 ///   current_user_email: email of the current user
 ///   recipient_email: email of the recipient
-pub async fn messages(
+pub async fn group_chat_messages(
     database: Database,
     current_user_email: String,
-    recipient_email: String,
+    // recipient_email: String,
+    group_chat_id: ObjectId,
+    group_chat_name: String,
 ) -> mongodb::error::Result<()> {
     clear_console();
     let mut messages_list: Vec<Message> = Vec::new();
 
-    let all_messages = get_messages(
-        database.clone(),
-        current_user_email.clone(),
-        recipient_email.clone(),
-    )
-    .await; // Messages are received in ascending order (most recent at last, oldest at first)
+    let all_messages: Result<Option<Vec<Message>>, _> =
+        get_messages_group_chat(database.clone(), group_chat_id.clone()).await;
 
     match all_messages {
         Ok(Some(messages)) => {
@@ -139,11 +147,11 @@ pub async fn messages(
     let shared_start2: Arc<Mutex<usize>> = Arc::clone(&shared_start);
 
     let current_user_email_arc = Arc::new(current_user_email.clone());
-    let recipient_email_arc = Arc::new(recipient_email.clone());
+    let group_chat_id_arc = Arc::new(group_chat_id.clone());
 
     let current_user_email_input: Arc<String> = Arc::clone(&current_user_email_arc);
     let current_user_email_input2: Arc<String> = Arc::clone(&current_user_email_arc);
-    let recipient_email_input: Arc<String> = Arc::clone(&recipient_email_arc);
+    let group_chat_id_input: Arc<ObjectId> = Arc::clone(&group_chat_id_arc);
 
     let database_arc = Arc::new(Mutex::new(database.clone()));
     let database_clone = Arc::clone(&database_arc);
@@ -160,7 +168,7 @@ pub async fn messages(
         loop {
             if first_run {
                 let mut msgs = messages_for_input.lock().unwrap();
-                print_messages(&msgs, current_user_email.clone(), start.clone());
+                print_messages(&msgs, group_chat_name.clone(), start.clone());
                 first_run = false;
             }
             println!("");
@@ -193,10 +201,10 @@ pub async fn messages(
                     break;
                 } else {
                     // Send the message. The message is message_input.
-                    send_message_w_db(
+                    send_message_group_chat_w_db(
                         database.clone(),
                         current_user_email_input.to_string(),
-                        recipient_email.to_string(),
+                        group_chat_id.clone(),
                         message_input.clone(),
                     )
                     .await;
@@ -218,11 +226,10 @@ pub async fn messages(
                 }
                 let mut msgs = messages_for_input.lock().unwrap();
                 let mut start = shared_start1.lock().unwrap();
-                print_messages(&msgs, recipient_email_input.to_string(), start.clone());
+                print_messages(&msgs, group_chat_name.clone(), start.clone());
             }
         }
     });
-    let recipient_email_input2: Arc<String> = Arc::clone(&recipient_email_arc);
 
     let messages_for_receive = Arc::clone(&messages);
 
@@ -236,6 +243,7 @@ pub async fn messages(
             db,
             messages_for_receive.clone(),
             current_user_email_input2.to_string(),
+            group_chat_id_input.to_string(),
             shared_start2.clone(),
         )
         .await;

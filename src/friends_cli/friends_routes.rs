@@ -1,6 +1,6 @@
 use mongodb::{
     bson::{doc, Bson, Document},
-    Collection
+    Collection,
 };
 
 #[derive(Debug, PartialEq)]
@@ -8,7 +8,7 @@ pub enum AddFriendOutcome {
     Success,
     CurrentEmailNotFound,
     OtherEmailNotFound,
-    AlreadyFriends
+    AlreadyFriends,
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,7 +37,7 @@ pub async fn add_friend_w_db(
     let current_user_doc = match get_user_doc(&user_coll, &current_email).await {
         Ok(current_user_doc) => current_user_doc,
         Err(Ok(())) => return Ok(AddFriendOutcome::CurrentEmailNotFound),
-        Err(Err(err_str)) => return Err(err_str)
+        Err(Err(err_str)) => return Err(err_str),
     };
 
     // Get current user friends list
@@ -52,7 +52,7 @@ pub async fn add_friend_w_db(
     let other_user_doc = match get_user_doc(&user_coll, &other_email).await {
         Ok(other_user_doc) => other_user_doc,
         Err(Ok(())) => return Ok(AddFriendOutcome::OtherEmailNotFound),
-        Err(Err(err_str)) => return Err(err_str)
+        Err(Err(err_str)) => return Err(err_str),
     };
 
     // Get other user friends list
@@ -68,8 +68,9 @@ pub async fn add_friend_w_db(
     };
 
     match user_coll
-    .update_one(doc! { "email": current_email}, current_update_doc)
-    .await {
+        .update_one(doc! { "email": current_email}, current_update_doc)
+        .await
+    {
         Ok(_) => (),
         Err(error) => return Err(error.to_string()),
     }
@@ -80,8 +81,9 @@ pub async fn add_friend_w_db(
     };
 
     match user_coll
-    .update_one(doc! { "email": other_email}, other_update_doc)
-    .await {
+        .update_one(doc! { "email": other_email}, other_update_doc)
+        .await
+    {
         Ok(_) => (),
         Err(error) => return Err(error.to_string()),
     }
@@ -129,10 +131,16 @@ pub async fn remove_friend_w_db(
     let mut other_friends_vec = get_friend_vec_from_doc(&other_user_doc);
 
     // Create new friend lists
-    let current_friends_index = current_friends_vec.iter().position(|r| *r == other_email).unwrap();
+    let current_friends_index = current_friends_vec
+        .iter()
+        .position(|r| *r == other_email)
+        .unwrap();
     current_friends_vec.remove(current_friends_index);
-    
-    let other_friends_index = other_friends_vec.iter().position(|r| *r == current_email).unwrap();
+
+    let other_friends_index = other_friends_vec
+        .iter()
+        .position(|r| *r == current_email)
+        .unwrap();
     other_friends_vec.remove(other_friends_index);
 
     // Update current friend list on mongodb
@@ -168,7 +176,10 @@ pub async fn remove_friend_w_db(
 /// Returns Ok(Some(Vec<String>)) if friends list obtained
 /// Returns Ok(None) if user does not exist
 /// Returns Error(String) if mongodb error occurs
-pub async fn get_friend_list(database: mongodb::Database, email: String) -> Result<Option<Vec<String>>, String> {
+pub async fn get_friend_list(
+    database: mongodb::Database,
+    email: String,
+) -> Result<Option<Vec<String>>, String> {
     let user_coll: Collection<Document> = database.collection("users");
 
     // Find current user based on email
@@ -186,7 +197,10 @@ pub async fn get_friend_list(database: mongodb::Database, email: String) -> Resu
 /// Returns Err(Result<(), String>)
 ///     Ok() if email not found in database
 ///     Err(String) if mongodb error occurs
-pub async fn get_user_doc(user_coll: &Collection<Document>, email: &String) -> Result<Document, Result<(), String>> {
+pub async fn get_user_doc(
+    user_coll: &Collection<Document>,
+    email: &String,
+) -> Result<Document, Result<(), String>> {
     let user = user_coll.find_one(doc! {"email": &email}).await;
     if user.is_err() {
         return Err(Err(user.unwrap_err().to_string()));
@@ -211,6 +225,8 @@ pub fn get_friend_vec_from_doc(user_doc: &Document) -> Vec<String> {
 
 #[cfg(test)]
 mod test {
+    use mongodb::Client;
+
     use super::*;
 
     #[tokio::test]
@@ -220,9 +236,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //remove friend
-        let remove_friend_outcome = remove_friend_w_db(database, "".to_string(), "test2@test.com".to_string()).await;
+        let remove_friend_outcome =
+            remove_friend_w_db(database, "".to_string(), "test2@test.com".to_string()).await;
 
-        assert_eq!(remove_friend_outcome.unwrap(), RemoveFriendOutcome::CurrentEmailNotFound);
+        assert_eq!(
+            remove_friend_outcome.unwrap(),
+            RemoveFriendOutcome::CurrentEmailNotFound
+        );
     }
 
     #[tokio::test]
@@ -232,9 +252,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //remove friend
-        let remove_friend_outcome = remove_friend_w_db(database, "test2@test.com".to_string(), "".to_string()).await;
+        let remove_friend_outcome =
+            remove_friend_w_db(database, "test2@test.com".to_string(), "".to_string()).await;
 
-        assert_eq!(remove_friend_outcome.unwrap(), RemoveFriendOutcome::OtherEmailNotFound);
+        assert_eq!(
+            remove_friend_outcome.unwrap(),
+            RemoveFriendOutcome::OtherEmailNotFound
+        );
     }
 
     #[tokio::test]
@@ -244,9 +268,17 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //remove friend
-        let remove_friend_outcome = remove_friend_w_db(database, "test2@test.com".to_string(), "test5@test.com".to_string()).await;
+        let remove_friend_outcome = remove_friend_w_db(
+            database,
+            "test2@test.com".to_string(),
+            "test5@test.com".to_string(),
+        )
+        .await;
 
-        assert_eq!(remove_friend_outcome.unwrap(), RemoveFriendOutcome::NotFriends);
+        assert_eq!(
+            remove_friend_outcome.unwrap(),
+            RemoveFriendOutcome::NotFriends
+        );
     }
 
     #[tokio::test]
@@ -254,13 +286,23 @@ mod test {
         // get database
         let client: Result<Client, mongodb::error::Error> = Client::with_uri_str("mongodb+srv://jennys4:3tA6Ui0z2MPrUnyk@cluster0.jwcji.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").await;
         let database = client.unwrap().database("cli_chat");
-        
+
         // remove friend
-        let remove_friend_outcome = remove_friend_w_db(database.clone(), "test4@test.com".to_string(), "test5@test.com".to_string()).await;
+        let remove_friend_outcome = remove_friend_w_db(
+            database.clone(),
+            "test4@test.com".to_string(),
+            "test5@test.com".to_string(),
+        )
+        .await;
         assert_eq!(remove_friend_outcome.unwrap(), RemoveFriendOutcome::Success);
 
         // add friend
-        let add_friend_outcome = add_friend_w_db(database, "test4@test.com".to_string(), "test5@test.com".to_string()).await;
+        let add_friend_outcome = add_friend_w_db(
+            database,
+            "test4@test.com".to_string(),
+            "test5@test.com".to_string(),
+        )
+        .await;
         assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::Success);
     }
 
@@ -271,9 +313,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //add friend
-        let add_friend_outcome = add_friend_w_db(database, "".to_string(), "test2@test.com".to_string()).await;
+        let add_friend_outcome =
+            add_friend_w_db(database, "".to_string(), "test2@test.com".to_string()).await;
 
-        assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::CurrentEmailNotFound);
+        assert_eq!(
+            add_friend_outcome.unwrap(),
+            AddFriendOutcome::CurrentEmailNotFound
+        );
     }
 
     #[tokio::test]
@@ -283,9 +329,13 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //add friend
-        let add_friend_outcome = add_friend_w_db(database, "test2@test.com".to_string(), "".to_string()).await;
+        let add_friend_outcome =
+            add_friend_w_db(database, "test2@test.com".to_string(), "".to_string()).await;
 
-        assert_eq!(add_friend_outcome.unwrap(), AddFriendOutcome::OtherEmailNotFound);
+        assert_eq!(
+            add_friend_outcome.unwrap(),
+            AddFriendOutcome::OtherEmailNotFound
+        );
     }
 
     #[tokio::test]
@@ -294,7 +344,12 @@ mod test {
         let database = client.unwrap().database("cli_chat");
 
         //add friend
-        let add_friend_outcome = add_friend_w_db(database, "test2@test.com".to_string(), "test3@test.com".to_string()).await;
+        let add_friend_outcome = add_friend_w_db(
+            database,
+            "test2@test.com".to_string(),
+            "test3@test.com".to_string(),
+        )
+        .await;
 
         assert_eq!(
             add_friend_outcome.unwrap(),
@@ -327,6 +382,9 @@ mod test {
         let mut expected_friend_list: Vec<String> = Vec::new();
         expected_friend_list.push("test3@test.com".to_string());
         expected_friend_list.push("test4@test.com".to_string());
-        assert_eq!(get_friend_list_outcome.unwrap().unwrap(), expected_friend_list);
+        assert_eq!(
+            get_friend_list_outcome.unwrap().unwrap(),
+            expected_friend_list
+        );
     }
 }
