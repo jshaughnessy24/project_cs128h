@@ -3,6 +3,8 @@ use python_input::input;
 
 use email_address::*;
 
+use ::regex::Regex;
+
 mod authentication;
 
 
@@ -22,7 +24,9 @@ pub async fn login_signup_cli() -> Option<String> {
           loop {
             email_input = input("What is your email?: ");
             // validate email input
-            if !EmailAddress::is_valid(&email_input) {
+            let email_regex = Regex::new(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$").unwrap();
+
+            if !email_regex.is_match(&email_input) {
               println!("Invalid email, please try again.");
             } else {
               break;
