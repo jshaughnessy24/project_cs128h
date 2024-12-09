@@ -35,12 +35,11 @@ async fn listen_for_changes(
 ) -> mongodb::error::Result<()> {
     let messages_coll: Collection<Document> = database.clone().collection("messages");
     let mut change_stream = messages_coll.watch().await?;   
-    while let Some(event) = change_stream.next().await.transpose()? { // this triggers a rerender
-        // println!("Operation performed: {:?}", event.operation_type);
-        // println!("Document: {:?}", event.full_document);
+    while let Some(event) = change_stream.next().await.transpose()? { 
         if let Some(doc) = event.full_document {
             let recipient_email = doc.get("recipient_email").unwrap().as_str().unwrap().to_string();
-            if recipient_email == current_user_email {
+            // let author_email = doc.get("author_email").unwrap().as_str().unwrap().to_string();
+            if recipient_email == current_user_email {//|| author_email == current_user_email {
                 let new_message = Message {
                     sender: doc.get("author_email").unwrap().as_str().unwrap().to_string(),
                     date_string: doc.get("date_sent").unwrap().as_datetime().unwrap().to_string(), 
@@ -118,13 +117,17 @@ pub async fn messages(
 
     let complete_status = Arc::new(Mutex::new(false));
 
-    let complete_status1: Arc<Mutex<bool>> = Arc::clone(&complete_status);
-    // let complete_status2: Arc<Mutex<bool>> = Arc::clone(&complete_status);
-
-    
+    let complete_status_clone = Arc::clone(&complete_status);
 
     tokio::spawn(async move {
+        let mut first_run = true;
         loop { // take user input
+            if first_run {
+                let mut msgs = messages_for_input.lock().unwrap();
+                print_messages(&msgs, current_user_email.clone(), start.clone());  
+                first_run = false;
+            }
+            println!("");  
             let mut input = String::new();
             print!("Submit your message, or navigate by typing up or down: ");
             io::stdout().flush().unwrap();
@@ -144,8 +147,8 @@ pub async fn messages(
                     }
                 } else if message_input == "back".to_string() {
                     // TODO: handle exit
-                    let mut completion_status = complete_status1.lock().unwrap();
-                    *completion_status = true;
+                    let mut curr_completion_status = complete_status_clone.lock().unwrap();
+                    *curr_completion_status = true;
                     break;
                 } else {
                     send_message_w_db(
@@ -178,7 +181,7 @@ pub async fn messages(
 
     let messages_for_receive = Arc::clone(&messages);
 
-    tokio::spawn(async move {
+    let listener_task = tokio::spawn(async move {
         let db = {
             let db_lock = database_clone.lock().unwrap(); 
             db_lock.clone()
@@ -192,6 +195,10 @@ pub async fn messages(
     });
 
     loop {
+        if (*complete_status.lock().unwrap()) {
+            listener_task.abort();
+            break;
+        }
         thread::sleep(Duration::from_secs(1));
     }
 

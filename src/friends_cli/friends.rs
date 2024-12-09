@@ -12,6 +12,7 @@ pub async fn friends(database: Database, user_email: String) {
     let mut friend_list: Vec<String> = Vec::new();
 
     loop {
+        println!("{}[2J", 27 as char);
         println!("\x1b[1mFriends List\x1b[0m\n");
 
         let email = user_email.to_string();
