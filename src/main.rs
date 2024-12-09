@@ -1,6 +1,10 @@
-mod friends_cli; // Declare the friends_cli module directory
-use friends_cli::friends::friends; // Import the friends function from the friends module
+mod friends_cli;
+use friends_cli::friends::friends;
+mod homepage;
+use homepage::homepage;
+mod group_chats_cli;
 mod login_signup_cli;
+use group_chats_cli::group_chats::group_chats;
 
 mod messages_cli;
 use messages_cli::messages::messages;
@@ -18,7 +22,11 @@ async fn main() -> mongodb::error::Result<()> {
     let user_email = login_signup_cli::login_signup_cli().await;
     print!("{}[2J", 27 as char);
 
-    friends(database, user_email.unwrap()).await; 
+    group_chats(database, user_email.unwrap()).await;
+
+    // homepage(database, user_email.unwrap()).await;
+
+    // friends(database, user_email.unwrap()).await;
 
     Ok(())
 }

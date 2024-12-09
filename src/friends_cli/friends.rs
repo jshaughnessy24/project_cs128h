@@ -1,6 +1,7 @@
 extern crate python_input;
-use python_input::input;
+use crate::homepage::homepage;
 use crate::messages_cli::messages::messages;
+use python_input::input;
 
 use mongodb::{Client, Database};
 
@@ -42,11 +43,13 @@ pub async fn friends(database: Database, user_email: String) {
         println!("[direct-message] [email] DM friend\n");
 
         let choice = input("What would you like to do? ");
-
         let parts: Vec<&str> = choice.split_whitespace().collect();
+
         match parts.as_slice() {
             ["back"] => {
-                println!("Returning to Homepage...");
+                print!("calling homepage isn't working for some reason");
+                // homepage(database.clone(), user_email.clone()).await;
+                print!("Returning to homepage...");
                 break;
             }
             ["add-friend", friend_email] => {
@@ -71,7 +74,6 @@ pub async fn friends(database: Database, user_email: String) {
                 }
             }
             ["remove-friend", friend_email] => {
-                // TODO
                 match remove_friend_w_db(database.clone(), email.clone(), friend_email.to_string())
                     .await
                 {
@@ -94,9 +96,12 @@ pub async fn friends(database: Database, user_email: String) {
             }
             ["direct-message", friend_email] => {
                 if friend_list.contains(&friend_email.to_string()) {
-                    // println!("Direct messaging {}...", friend_email);
-                    messages(database.clone(), user_email.to_string(), friend_email.to_string()).await;
-                    // TODO
+                    messages(
+                        database.clone(),
+                        user_email.clone(),
+                        friend_email.to_string(),
+                    )
+                    .await;
                 } else {
                     println!("Friend '{}' not found in your friend list.", friend_email);
                 }
