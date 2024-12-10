@@ -7,7 +7,9 @@ Zia Lu (zixuan43)
 CLIChat may not run on Windows computers. It has been tested on Mac.
 
 ## Building CLIChat
-Clone the CLIChat GitHub repo. Make sure Rust is installed. After, run `cargo build` using the terminal in the project directory. 
+Open the terminal and navigate to the directory in which you would like to clone the CLIChat repository.
+Run `git clone https://github.com/jshaughnessy24/project_cs128h.git`.
+Make sure Rust is installed. After, navigate into the project directory and run `cargo build`. 
 
 ## Signing up/in
 Run `cargo run` in the terminal. 
@@ -35,7 +37,7 @@ You should see a screen similar to the one below.
 
 <img width="245" alt="image" src="https://github.com/user-attachments/assets/326a9937-4523-4b6a-a7dd-e0d05baa9412">
 
-To add or remove friends, follow the on-screen prompts; the input formatting is similar to direct messaging. 
+To add or remove friends, follow the on-screen prompts; the input formatting is similar to direct messaging. Some sample friends you could add are test@yahoo.com and test2@yahoo.com.
 #### Direct Messaging
 After arriving at the Friends List page, to direct message a friend, enter "direct-message [email]". 
 
