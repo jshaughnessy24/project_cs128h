@@ -9,7 +9,7 @@ CLIChat may not run on Windows computers. It has been tested on Mac.
 ## Building CLIChat
 Open the terminal and navigate to the directory in which you would like to clone the CLIChat repository.
 Run `git clone https://github.com/jshaughnessy24/project_cs128h.git`.
-Make sure Rust is installed. After, navigate into the project directory and run `cargo build`. 
+Make sure Rust is installed. After, navigate to the project directory and run `cargo build`. 
 
 ## Signing up/in
 Run `cargo run` in the terminal. 
