@@ -7,7 +7,7 @@ Zia Lu (zixuan43)
 CLIChat may not run on Windows computers. It has been tested on Mac.
 
 ## Building CLIChat
-Clone the CLIChat GitHub repo. Make sure Rust is installed. After, run `cargo build` in the terminal. 
+Clone the CLIChat GitHub repo. Make sure Rust is installed. After, run `cargo build` using the terminal in the project directory. 
 
 ## Signing up/in
 Run `cargo run` in the terminal. 
