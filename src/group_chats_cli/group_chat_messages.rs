@@ -21,6 +21,7 @@ use mongodb::{bson::Document, Collection, Database};
 ///   database: mongodb database
 ///   messages: list of messages
 ///   current_user_email: email of the current user
+///   group_chat_name: name of the groupchat
 ///   shared_start: start index to begin printing from
 async fn listen_for_new_incoming_messages(
     database: Database,
@@ -33,13 +34,13 @@ async fn listen_for_new_incoming_messages(
     let mut change_stream = messages_coll.watch().await?;
     while let Some(event) = change_stream.next().await.transpose()? {
         if let Some(doc) = event.full_document {
-            let recipient_email = doc
-                .get("recipient_email")
+            let group_chat_id = doc
+                .get("group_chat_id")
                 .unwrap()
-                .as_str()
+                .as_object_id()
                 .unwrap()
                 .to_string();
-            if recipient_email == current_user_email {
+            if group_chat_name == group_chat_id {
                 let new_message = Message {
                     sender: doc
                         .get("author_email")

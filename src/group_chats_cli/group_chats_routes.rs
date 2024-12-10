@@ -26,7 +26,7 @@ pub enum SendMessageOutcome {
 pub struct Message {
     pub sender: String,
     pub date_string: String,
-    pub content: String,
+    pub content: String
 }
 
 pub async fn send_message_group_chat_w_db(
