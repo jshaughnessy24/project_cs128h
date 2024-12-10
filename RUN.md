@@ -22,9 +22,12 @@ Enter "2". Then, enter your email. Then, enter your password.
 ### Sign in 
 Enter "1". Then, enter your email. Then, enter your password.
 
+<br>
 
 You should see a screen similar to the one below.
 
 <img width="199" alt="image" src="https://github.com/user-attachments/assets/a53d55f9-94ef-44c7-8222-203966660f58">
 
-## 
+## Home Page
+### Friends Page
+### Group Chats Page
