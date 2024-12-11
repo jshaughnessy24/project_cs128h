@@ -106,7 +106,7 @@ pub async fn friends(database: Database, user_email: String) {
                 // Handle direct messaging a friend
                 if friend_list.contains(&friend_email.to_string()) {
                     // clear_console();
-                    messages(
+                    let _ = messages(
                         database.clone(),
                         user_email.to_string(),
                         friend_email.to_string(),

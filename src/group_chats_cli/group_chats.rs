@@ -96,7 +96,7 @@ async fn access_group_chat(
 ) {
     println!("\nAccessing group chat: {}\n", group_chat_name);
 
-    group_chat_messages(
+    let _ = group_chat_messages(
         database.clone(),
         user_email.clone(),
         group_chat_id,

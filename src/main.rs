@@ -1,10 +1,8 @@
 mod friends_cli;
-use friends_cli::friends::friends;
 mod homepage;
 use homepage::homepage;
 mod group_chats_cli;
 mod login_signup_cli;
-use group_chats_cli::group_chats::group_chats;
 
 mod messages_cli;
 

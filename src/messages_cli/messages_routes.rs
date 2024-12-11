@@ -1,7 +1,6 @@
 use futures::TryStreamExt;
 use mongodb::{
-    bson::{self, doc, Bson, Document},
-    Client, Collection,
+    bson::{self, doc, Document}, Collection,
 };
 
 use crate::friends_cli::friends_routes;
@@ -39,7 +38,7 @@ pub async fn send_message_w_db(
     };
 
     // Check that author is friends with the recipient
-    let mut author_friends_vec = friends_routes::get_friend_vec_from_doc(&author_user_doc);
+    let author_friends_vec = friends_routes::get_friend_vec_from_doc(&author_user_doc);
 
     if !author_friends_vec.contains(&recipient_email) {
         return Ok(SendMessageOutcome::NotFriends);

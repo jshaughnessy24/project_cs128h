@@ -101,7 +101,7 @@ pub async fn messages(
     recipient_email: String,
 ) -> mongodb::error::Result<()> {
     clear_console();
-    let mut messages_list: Vec<Message> = Vec::new();
+    let messages_list: Vec<Message>;
 
     let all_messages = get_messages(
         database.clone(),
@@ -159,7 +159,7 @@ pub async fn messages(
         let mut first_run = true;
         loop {
             if first_run {
-                let mut msgs = messages_for_input.lock().unwrap();
+                let msgs = messages_for_input.lock().unwrap();
                 print_messages(&msgs, current_user_email.clone(), start.clone());
                 first_run = false;
             }
@@ -180,7 +180,7 @@ pub async fn messages(
                 } else if message_input == "down".to_string() {
                     // Move the start down 1
                     let mut start = shared_start.lock().unwrap();
-                    let mut msgs = messages_for_input.lock().unwrap();
+                    let msgs = messages_for_input.lock().unwrap();
                     if *start < msgs.len() - 3 {
                         // Prevent from going below the bottom
                         *start = *start + 1;
@@ -193,7 +193,7 @@ pub async fn messages(
                     break;
                 } else {
                     // Send the message. The message is message_input.
-                    send_message_w_db(
+                    let _ = send_message_w_db(
                         database.clone(),
                         current_user_email_input.to_string(),
                         recipient_email.to_string(),
@@ -216,14 +216,12 @@ pub async fn messages(
                         *start = 0;
                     }
                 }
-                let mut msgs = messages_for_input.lock().unwrap();
-                let mut start = shared_start1.lock().unwrap();
+                let msgs = messages_for_input.lock().unwrap();
+                let start = shared_start1.lock().unwrap();
                 print_messages(&msgs, recipient_email_input.to_string(), start.clone());
             }
         }
     });
-    let recipient_email_input2: Arc<String> = Arc::clone(&recipient_email_arc);
-
     let messages_for_receive = Arc::clone(&messages);
 
     let listener_task = tokio::spawn(async move {
@@ -232,7 +230,7 @@ pub async fn messages(
             let db_lock = database_clone.lock().unwrap();
             db_lock.clone()
         };
-        listen_for_new_incoming_messages(
+        let _ = listen_for_new_incoming_messages(
             db,
             messages_for_receive.clone(),
             current_user_email_input2.to_string(),
