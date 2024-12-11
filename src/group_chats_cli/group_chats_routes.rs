@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use futures::TryStreamExt;
 use mongodb::{
-    bson::{self, doc, oid::ObjectId, Bson, Document},
-    Client, Collection,
+    bson::{self, doc, oid::ObjectId, Bson, Document}, Collection,
 };
 
-use crate::friends_cli::friends_routes::{self, get_friend_vec_from_doc};
+use crate::friends_cli::friends_routes::{self};
 
 #[derive(Debug, PartialEq)]
 pub enum AddGroupChatOutcome {
@@ -252,9 +251,9 @@ pub async fn get_group_chat_ids_names_map(
 }
 
 mod test {
-    use std::str::FromStr;
+    
 
-    use super::*;
+    
     #[tokio::test]
 
     async fn test_add_group_chat_current_email_not_found() {

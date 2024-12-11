@@ -5,7 +5,6 @@ use std::thread;
 use crate::group_chats_cli::group_chats_routes::{
     get_messages_group_chat, send_message_group_chat_w_db, Message,
 };
-use chrono;
 use futures::StreamExt;
 use mongodb::bson::oid::ObjectId;
 
@@ -106,16 +105,16 @@ fn print_messages(messages_list: &Vec<Message>, group_chat_name: String, start: 
 /// Handles messages between users.
 ///   database: mongodb database
 ///   current_user_email: email of the current user
-///   recipient_email: email of the recipient
+///   group_chat_id: id of the group chat
+///   group_chat_name: name of the group chat
 pub async fn group_chat_messages(
     database: Database,
     current_user_email: String,
-    // recipient_email: String,
     group_chat_id: ObjectId,
     group_chat_name: String,
 ) -> mongodb::error::Result<()> {
     clear_console();
-    let mut messages_list: Vec<Message> = Vec::new();
+    let messages_list: Vec<Message>;
 
     let all_messages: Result<Option<Vec<Message>>, _> =
         get_messages_group_chat(database.clone(), group_chat_id.clone()).await;
@@ -171,7 +170,7 @@ pub async fn group_chat_messages(
         let mut first_run = true;
         loop {
             if first_run {
-                let mut msgs = messages_for_input.lock().unwrap();
+                let msgs = messages_for_input.lock().unwrap();
                 print_messages(&msgs, group_chat_name.clone(), start.clone());
                 first_run = false;
             }
@@ -192,7 +191,7 @@ pub async fn group_chat_messages(
                 } else if message_input == "down".to_string() {
                     // Move the start down 1
                     let mut start = shared_start.lock().unwrap();
-                    let mut msgs = messages_for_input.lock().unwrap();
+                    let msgs = messages_for_input.lock().unwrap();
                     if *start < msgs.len() - 3 {
                         // Prevent from going below the bottom
                         *start = *start + 1;
@@ -205,7 +204,7 @@ pub async fn group_chat_messages(
                     break;
                 } else {
                     // Send the message. The message is message_input.
-                    send_message_group_chat_w_db(
+                    let _ = send_message_group_chat_w_db(
                         database.clone(),
                         current_user_email_input.to_string(),
                         group_chat_id.clone(),
@@ -213,8 +212,8 @@ pub async fn group_chat_messages(
                     )
                     .await;
                 }
-                let mut msgs = messages_for_input.lock().unwrap();
-                let mut start = shared_start1.lock().unwrap();
+                let msgs = messages_for_input.lock().unwrap();
+                let start = shared_start1.lock().unwrap();
                 print_messages(&msgs, group_chat_name.clone(), start.clone());
             }
         }
@@ -228,7 +227,7 @@ pub async fn group_chat_messages(
             let db_lock = database_clone.lock().unwrap();
             db_lock.clone()
         };
-        listen_for_new_incoming_messages(
+        let _ = listen_for_new_incoming_messages(
             db,
             messages_for_receive.clone(),
             current_user_email_input2.to_string(),

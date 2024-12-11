@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use super::group_chats_routes::{add_group_chat_w_db, AddGroupChatOutcome};
 use crate::{clear_console, group_chats_cli::group_chat_messages::group_chat_messages};
-use mongodb::{bson::oid::ObjectId, Database};
+use mongodb::Database;
 use python_input::input;
 
 /// Function to create a new group chat and open its messages view upon success.
